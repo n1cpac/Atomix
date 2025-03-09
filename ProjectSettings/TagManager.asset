@@ -6,6 +6,8 @@ TagManager:
   tags:
   - sphere
   - Sphere
+  - piso
+  - molecule
   layers:
   - Default
   - TransparentFX
