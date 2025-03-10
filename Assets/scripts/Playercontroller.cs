@@ -2,16 +2,16 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    public float moveSpeed = 50f;
+    public float moveSpeed = 70f;
     public float jumpForce = 50f;
-    public float rotationSpeed = 100f; // Velocidad de rotación con A y D
-    public Transform holdPosition; // Posición donde se sujetará la molécula
-    public float pickupRange = 10f; // Distancia para agarrar una molécula
-    public float dropDistance = 1.5f; // Distancia donde se soltará la molécula
-    public Vector3 holdOffset = new Vector3(0, 0.9f, 0); // Offset para que la molécula se vea encima
+    public float rotationSpeed = 100f;
+    public Transform holdPosition;
+    public float pickupRange = 10f;
+    public float dropDistance = 1.5f;
+    public Vector3 holdOffset = new Vector3(0, 1.0f, 0);
 
     private Rigidbody rb;
-    private GameObject heldMolecule = null; // Referencia a la molécula que se sostiene
+    private GameObject heldMolecule = null;
     private bool isGrounded;
 
     void Start()
@@ -21,24 +21,27 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // Rotación con A y D (Input horizontal)
-        float horizontal = Input.GetAxis("Horizontal");
-        transform.Rotate(0, horizontal * rotationSpeed * Time.deltaTime, 0);
-
-        // Movimiento hacia adelante y atrás con W y S (Input vertical)
+        // --- Movimiento del jugador ---
         float vertical = Input.GetAxis("Vertical");
         Vector3 move = transform.forward * vertical * moveSpeed * Time.deltaTime;
         rb.MovePosition(transform.position + move);
 
-        // Salto con la barra espaciadora
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        // --- Rotación del jugador (solo si está en el suelo) ---
+        if (isGrounded)
+        {
+            float horizontal = Input.GetAxis("Horizontal");
+            transform.Rotate(0, horizontal * rotationSpeed * Time.deltaTime, 0);
+        }
+
+        // --- Salto ---
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton0)) && isGrounded)
         {
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
             isGrounded = false;
         }
 
-        // Agarrar/Soltar molécula con la tecla "F"
-        if (Input.GetKeyDown(KeyCode.F))
+        // --- Agarrar/Soltar Molécula ---
+        if (Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.JoystickButton1))
         {
             if (heldMolecule == null)
                 PickUpMolecule();
@@ -46,7 +49,7 @@ public class PlayerController : MonoBehaviour
                 DropMolecule();
         }
 
-        // Actualizar la posición de la molécula si se tiene una
+        // --- Actualizar la posición de la molécula recogida ---
         if (heldMolecule != null)
         {
             heldMolecule.transform.position = holdPosition.position + holdOffset;
@@ -55,7 +58,6 @@ public class PlayerController : MonoBehaviour
 
     private void PickUpMolecule()
     {
-        // Buscar la molécula más cercana dentro del rango
         Collider[] colliders = Physics.OverlapSphere(transform.position, pickupRange);
         foreach (Collider col in colliders)
         {
@@ -63,7 +65,7 @@ public class PlayerController : MonoBehaviour
             {
                 heldMolecule = col.gameObject;
                 heldMolecule.transform.SetParent(holdPosition);
-                heldMolecule.GetComponent<Rigidbody>().isKinematic = true; // Desactivar físicas mientras se sostiene
+                heldMolecule.GetComponent<Rigidbody>().isKinematic = true;
                 break;
             }
         }
@@ -75,7 +77,7 @@ public class PlayerController : MonoBehaviour
         {
             heldMolecule.transform.SetParent(null);
             heldMolecule.transform.position = transform.position + transform.forward * dropDistance;
-            heldMolecule.GetComponent<Rigidbody>().isKinematic = false; // Reactivar físicas
+            heldMolecule.GetComponent<Rigidbody>().isKinematic = false;
             heldMolecule = null;
         }
     }

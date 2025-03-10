@@ -20,34 +20,46 @@ public class CameraOrbit : MonoBehaviour
             return;
         }
 
-        if (Input.GetKey(KeyCode.Q)) // Rotar a la izquierda
+        // Rotación con teclas Q y E (alternativa)
+        if (Input.GetKey(KeyCode.Q))
         {
-            RotateCamera(1);
+            RotateCamera(1f);
         }
-        if (Input.GetKey(KeyCode.E)) // Rotar a la derecha
+        if (Input.GetKey(KeyCode.E))
         {
-            RotateCamera(-1);
+            RotateCamera(-1f);
         }
-        if (Input.GetKeyDown(KeyCode.R)) // Cambiar a vista cenital
+
+        // Rotación con el joystick derecho
+        float rightStick = Input.GetAxis("RightStickHorizontal");
+        if (!Mathf.Approximately(rightStick, 0f))
+        {
+            RotateCamera(rightStick);
+        }
+
+        // Alternar vista cenital usando la tecla R o el botón del joystick derecho (JoystickButton9)
+        if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.JoystickButton9))
         {
             ToggleView();
         }
 
-        if (Input.GetKey(KeyCode.UpArrow)) // Acercar la cámara
+        // Zoom con flechas arriba y abajo
+        if (Input.GetKey(KeyCode.UpArrow))
         {
             AdjustDistance(-zoomSpeed * Time.deltaTime);
         }
-        if (Input.GetKey(KeyCode.DownArrow)) // Alejar la cámara
+        if (Input.GetKey(KeyCode.DownArrow))
         {
             AdjustDistance(zoomSpeed * Time.deltaTime);
         }
     }
 
-    public void RotateCamera(int direction)
+    // Ahora acepta un valor float para permitir rotación continua según el input
+    public void RotateCamera(float delta)
     {
         if (isTopView) return; // No rotar si está en vista cenital
 
-        angle += direction * rotationSpeed * Time.deltaTime;
+        angle += delta * rotationSpeed * Time.deltaTime;
         Quaternion rotation = Quaternion.Euler(30, angle, 0); // Vista isométrica con inclinación de 30°
         Vector3 offset = rotation * new Vector3(0, height, -distance);
         transform.position = target.position + offset;
@@ -56,7 +68,7 @@ public class CameraOrbit : MonoBehaviour
 
     void ToggleView()
     {
-        isTopView = !isTopView; // Cambiar entre isométrica y cenital
+        isTopView = !isTopView; // Alternar entre isométrica y cenital
         if (isTopView)
         {
             transform.position = target.position + new Vector3(0, distance, 0); // Vista cenital
@@ -70,7 +82,7 @@ public class CameraOrbit : MonoBehaviour
 
     void AdjustDistance(float delta)
     {
-        distance = Mathf.Clamp(distance + delta, minDistance, maxDistance); // Limita la distancia
+        distance = Mathf.Clamp(distance + delta, minDistance, maxDistance);
         RotateCamera(0); // Aplica la nueva distancia sin cambiar la orientación
     }
 }
