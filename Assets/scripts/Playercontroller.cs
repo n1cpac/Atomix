@@ -2,8 +2,8 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    public float moveSpeed = 70f;
-    public float jumpForce = 50f;
+    public float moveSpeed = 300f;
+    public float jumpForce = 120f;
     public float rotationSpeed = 100f;
     public Transform holdPosition;
     public float pickupRange = 10f;
