@@ -14,6 +14,8 @@ public class Cronometro : MonoBehaviour {
 
     void Start() {
         ResetearTiempo();
+        Overlaypausa.SetActive(false); // Asegúrate de que el overlay de pausa esté oculto al inicio
+        segurodesalir.SetActive(false); // Asegúrate de que el mensaje de confirmación esté oculto al inicio
     }
 
     void Update() {
@@ -37,10 +39,6 @@ public class Cronometro : MonoBehaviour {
         }
     }
 
-    public void Pausar(bool pausar) {
-        estaPausado = pausar;
-    }
-
     public void ResetearTiempo() {
         tiempoTranscurrido = iniciarEnCero ? 0f : tiempoInicial;
         ActualizarDisplay();
@@ -49,5 +47,29 @@ public class Cronometro : MonoBehaviour {
     // Método para obtener el tiempo actual
     public float ObtenerTiempoActual() {
         return tiempoTranscurrido;
+    }
+
+    public GameObject Overlaypausa;
+    public void PausarJuego() {
+        Time.timeScale = 0f; // Pausa el juego
+        Overlaypausa.SetActive(true); // Muestra el overlay de pausa
+    }
+
+    public void ReanudarJuego() {
+        Time.timeScale = 1f; // Reanuda el juego
+        Overlaypausa.SetActive(false); // Oculta el overlay de pausa
+        segurodesalir.SetActive(false); // Oculta el mensaje de confirmación
+    }
+
+    public GameObject segurodesalir;
+    
+    public void MostrarSeguroSalir() {
+        Overlaypausa.SetActive(false); // Oculta el overlay de pausa
+        segurodesalir.SetActive(true); // Muestra el mensaje de confirmación
+    }
+
+    public void iralmenuprincipal() {
+
+        UnityEngine.SceneManagement.SceneManager.LoadScene("MenuPrincipal"); // Cambia a la escena del menú principal
     }
 }

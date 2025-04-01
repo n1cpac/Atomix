@@ -33,6 +33,12 @@ public class UIManager : MonoBehaviour
     public float tiempoBienvenida = 4f;
     public string[] escenasPolimeros = new string[5];
 
+        public void CambiarEscena(string nombreEscena)
+    {
+        // Cargar la escena especificada
+        SceneManager.LoadScene(nombreEscena);
+    }
+
     void Start()
     {
         // Configuración inicial de visibilidad
@@ -40,6 +46,7 @@ public class UIManager : MonoBehaviour
         Menu_principal.SetActive(false);
         seleccion_dificultad.SetActive(false);
         seleccion_polimeros.SetActive(false);
+        
 
         // Configurar listeners de botones
         btnExperimenta.onClick.AddListener(BotonExperimenta);
@@ -107,11 +114,15 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void SeleccionarPolimero(int indice)
-    {
-        SceneManager.LoadScene(indice);
+    public void SeleccionarPolimero(int indice) {
+    // Verifica que el índice sea válido
+    if (indice >= 0 && indice < escenasPolimeros.Length) {
+        string nombreEscena = escenasPolimeros[indice];
+        if (!string.IsNullOrEmpty(nombreEscena)) {
+            SceneManager.LoadScene(nombreEscena); // Carga por nombre
+        }
     }
-
+}
     public void VolverAPanelAnterior()
     {
         if(seleccion_polimeros.activeSelf)
