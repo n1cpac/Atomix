@@ -8,6 +8,7 @@ TagManager:
   - Sphere
   - piso
   - molecule
+  - connector
   layers:
   - Default
   - TransparentFX
