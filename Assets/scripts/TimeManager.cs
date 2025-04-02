@@ -70,6 +70,6 @@ public class Cronometro : MonoBehaviour {
 
     public void iralmenuprincipal() {
 
-        UnityEngine.SceneManagement.SceneManager.LoadScene("MenuPrincipal"); // Cambia a la escena del menú principal
+        UnityEngine.SceneManagement.SceneManager.LoadScene("MenuInicial"); // Cambia a la escena del menú principal
     }
 }

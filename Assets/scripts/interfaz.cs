@@ -33,21 +33,33 @@ public class UIManager : MonoBehaviour
     public float tiempoBienvenida = 4f;
     public string[] escenasPolimeros = new string[5];
 
-        public void CambiarEscena(string nombreEscena)
+    public void CambiarEscena(string nombreEscena)
     {
-        // Cargar la escena especificada
         SceneManager.LoadScene(nombreEscena);
     }
 
     void Start()
     {
+        // Asegurar que los botones sean interactivos
+        btnExperimenta.interactable = true;
+        btnPersonaliza.interactable = true;
+        btnBye.interactable = true;
+        btnTutorial.interactable = true;
+        btnFacil.interactable = true;
+        btnMedio.interactable = true;
+        btnDificil.interactable = true;
+        btnSeleccionarNivel1.interactable = true;
+        btnSeleccionarNivel2.interactable = true;
+        btnSeleccionarNivel3.interactable = true;
+        btnSeleccionarNivel4.interactable = true;
+        btnSeleccionarNivel5.interactable = true;
+        
         // Configuración inicial de visibilidad
         Pantalla_carga_inicial.SetActive(true);
         Menu_principal.SetActive(false);
         seleccion_dificultad.SetActive(false);
         seleccion_polimeros.SetActive(false);
         
-
         // Configurar listeners de botones
         btnExperimenta.onClick.AddListener(BotonExperimenta);
         btnPersonaliza.onClick.AddListener(BotonPersonaliza);
@@ -75,7 +87,6 @@ public class UIManager : MonoBehaviour
         Menu_principal.SetActive(true);
     }
 
-    // --- Control de Botones del Menú Principal ---
     public void BotonExperimenta()
     {
         Menu_principal.SetActive(false);
@@ -85,13 +96,11 @@ public class UIManager : MonoBehaviour
     public void BotonPersonaliza()
     {
         Debug.Log("Personalización activada");
-        // Lógica de personalización aquí
     }
 
     public void BotonTutorial()
     {
         Debug.Log("Tutorial activado");
-        // Cargar escena de tutorial o mostrar panel
     }
 
     public void BotonSalir()
@@ -102,10 +111,9 @@ public class UIManager : MonoBehaviour
         #endif
     }
 
-    // --- Navegación entre paneles ---
     public void SeleccionarDificultad(int nivel)
     {
-        PlayerPrefs.SetInt("Dificultad", nivel); // 0=fácil, 1=medio, 2=difícil
+        PlayerPrefs.SetInt("Dificultad", nivel);
         
         if (nivel == 0)
         {
@@ -115,14 +123,14 @@ public class UIManager : MonoBehaviour
     }
 
     public void SeleccionarPolimero(int indice) {
-    // Verifica que el índice sea válido
-    if (indice >= 0 && indice < escenasPolimeros.Length) {
-        string nombreEscena = escenasPolimeros[indice];
-        if (!string.IsNullOrEmpty(nombreEscena)) {
-            SceneManager.LoadScene(nombreEscena); // Carga por nombre
+        if (indice >= 0 && indice < escenasPolimeros.Length) {
+            string nombreEscena = escenasPolimeros[indice];
+            if (!string.IsNullOrEmpty(nombreEscena)) {
+                SceneManager.LoadScene(nombreEscena);
+            }
         }
     }
-}
+
     public void VolverAPanelAnterior()
     {
         if(seleccion_polimeros.activeSelf)
