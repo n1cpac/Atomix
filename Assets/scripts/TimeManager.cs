@@ -12,6 +12,9 @@ public class Cronometro : MonoBehaviour {
     private float tiempoTranscurrido;
     private bool estaPausado = false;
 
+    public GameObject Overlaypausa;
+    public GameObject segurodesalir;
+
     void Start() {
         ResetearTiempo();
         Overlaypausa.SetActive(false); // Asegúrate de que el overlay de pausa esté oculto al inicio
@@ -33,9 +36,6 @@ public class Cronometro : MonoBehaviour {
             
             // Formato HH:MM:SS
             timeText.text = string.Format("{0:00}:{1:00}:{2:00}", horas, minutos, segundos);
-            
-            // Alternativa sin horas: MM:SS
-            // timeText.text = string.Format("{0:00}:{1:00}", minutos, segundos);
         }
     }
 
@@ -49,26 +49,30 @@ public class Cronometro : MonoBehaviour {
         return tiempoTranscurrido;
     }
 
-    public GameObject Overlaypausa;
     public void PausarJuego() {
         Time.timeScale = 0f; // Pausa el juego
+        estaPausado = true;
         Overlaypausa.SetActive(true); // Muestra el overlay de pausa
     }
 
     public void ReanudarJuego() {
         Time.timeScale = 1f; // Reanuda el juego
+        estaPausado = false;
         Overlaypausa.SetActive(false); // Oculta el overlay de pausa
         segurodesalir.SetActive(false); // Oculta el mensaje de confirmación
     }
 
-    public GameObject segurodesalir;
-    
     public void MostrarSeguroSalir() {
         Overlaypausa.SetActive(false); // Oculta el overlay de pausa
         segurodesalir.SetActive(true); // Muestra el mensaje de confirmación
     }
 
     public void iralmenuprincipal() {
+        Time.timeScale = 1f; // Asegúrate de reanudar el tiempo al volver al menú
+        estaPausado = false;
+
+        // Si tenés objetos con DontDestroyOnLoad y querés eliminarlos, lo podés hacer acá.
+        // Por ahora no se necesita.
 
         UnityEngine.SceneManagement.SceneManager.LoadScene("MenuInicial"); // Cambia a la escena del menú principal
     }

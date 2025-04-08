@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
+using System.Collections;
 
 public class UIManager : MonoBehaviour
 {
@@ -32,11 +33,6 @@ public class UIManager : MonoBehaviour
     [Header("Configuración")]
     public float tiempoBienvenida = 4f;
     public string[] escenasPolimeros = new string[5];
-
-    public void CambiarEscena(string nombreEscena)
-    {
-        SceneManager.LoadScene(nombreEscena);
-    }
 
     void Start()
     {
@@ -122,13 +118,28 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void SeleccionarPolimero(int indice) {
-        if (indice >= 0 && indice < escenasPolimeros.Length) {
+    public void SeleccionarPolimero(int indice)
+    {
+        if (indice >= 0 && indice < escenasPolimeros.Length)
+        {
             string nombreEscena = escenasPolimeros[indice];
-            if (!string.IsNullOrEmpty(nombreEscena)) {
-                SceneManager.LoadScene(nombreEscena);
+            if (!string.IsNullOrEmpty(nombreEscena))
+            {
+                StartCoroutine(ReproducirVideoYEntrar(nombreEscena));
             }
         }
+    }
+
+    private IEnumerator ReproducirVideoYEntrar(string nombreEscena)
+    {
+        // Buscar el VideoFadePlayer en escena
+        VideoFadePlayer videoPlayer = FindObjectOfType<VideoFadePlayer>();
+        if (videoPlayer != null)
+        {
+            yield return StartCoroutine(videoPlayer.PlayVideoAndWait());
+        }
+
+        SceneManager.LoadScene(nombreEscena);
     }
 
     public void VolverAPanelAnterior()
@@ -143,5 +154,16 @@ public class UIManager : MonoBehaviour
             seleccion_dificultad.SetActive(false);
             Menu_principal.SetActive(true);
         }
+  
     }
+
+    public void ReiniciarMenu()
+{
+    Pantalla_carga_inicial.SetActive(true);
+    Menu_principal.SetActive(false);
+    seleccion_dificultad.SetActive(false);
+    seleccion_polimeros.SetActive(false);
+    Invoke("MostrarMenuPrincipal", tiempoBienvenida);
+}
+
 }
