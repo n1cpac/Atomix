@@ -5,6 +5,8 @@ public class MoleculeConnector : MonoBehaviour
 {
     public bool isCentralConnector;
     public float connectionRange = 0.5f; // Radio reducido
+    [SerializeField] private GameObject enlaceVisualPrefab; // Prefab del enlace visual
+
     private List<GameObject> connectedMolecules = new List<GameObject>();
 
     void Update()
@@ -55,40 +57,56 @@ public class MoleculeConnector : MonoBehaviour
 
     private void ConnectMolecule(GameObject molecule)
     {
-        // Verificación de agarre (si es necesario)
-        // if (molecule.GetComponent<Grabbable>() != null && molecule.GetComponent<Grabbable>().IsGrabbed) return;
+        // Evita reconexiones
+        if (connectedMolecules.Contains(molecule)) return;
 
-        // Configuración de posición y parentesco
-        molecule.transform.SetParent(transform, true); // Mantiene posición global
+        // Configura la posición y el parentesco
+        molecule.transform.SetParent(transform, true);
         molecule.transform.position = GetClosestConnectionPoint(molecule);
-        
-        // Configuración física mejorada
+
+        // Fijar física
         Rigidbody rb = molecule.GetComponent<Rigidbody>();
         if (rb != null)
         {
-            rb.isKinematic = false; // Mantenemos física activa
+            rb.isKinematic = false;
             rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeAll; // Congela todas las rotaciones y movimientos
+            rb.constraints = RigidbodyConstraints.FreezeAll;
         }
 
-        // Configuración de colisiones
+        // Colisiones normales
         Collider collider = molecule.GetComponent<Collider>();
         if (collider != null)
         {
-            collider.isTrigger = false; // Aseguramos colisiones normales
+            collider.isTrigger = false;
         }
 
+        // Agrega a la lista
         connectedMolecules.Add(molecule);
+
+        // Crear el enlace visual entre ambos
+        CreateVisualBond(gameObject, molecule);
+
         Debug.Log("Molécula conectada correctamente");
     }
 
     private Vector3 GetClosestConnectionPoint(GameObject molecule)
     {
-        // Calcula punto más cercano en el collider del conector
         Vector3 closestPoint = GetComponent<Collider>().ClosestPoint(molecule.transform.position);
-        
-        // Ajuste final de posición con offset pequeño
-        return closestPoint + (transform.position - closestPoint).normalized * 0.1f;
+        return closestPoint + (transform.position - closestPoint).normalized * 0.2f; // Aumenta separación visual
+    }
+
+    private void CreateVisualBond(GameObject from, GameObject to)
+    {
+        if (enlaceVisualPrefab == null) return;
+
+        GameObject enlace = Instantiate(enlaceVisualPrefab);
+        Vector3 start = from.transform.position;
+        Vector3 end = to.transform.position;
+
+        enlace.transform.position = (start + end) / 2f;
+        enlace.transform.up = (end - start).normalized;
+        float distancia = Vector3.Distance(start, end);
+        enlace.transform.localScale = new Vector3(0.1f, distancia / 2f + 0.05f, 0.1f); // Más ancho y largo
     }
 
     void OnDrawGizmosSelected()

@@ -1,168 +1,96 @@
 using UnityEngine;
-using System.Collections;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 public class PlayerController : MonoBehaviour
 {
-    public float moveSpeed = 70f;              // Velocidad del movimiento horizontal
-    public float jumpForce = 50f;              // Fuerza del salto
-    public float rotationSpeed = 100f;         // Velocidad de rotación (solo eje Y)
-    public Transform holdPosition;             // Posición para sujetar la molécula
-    public float pickupRange = 10f;            // Rango para agarrar una molécula
-    public float dropDistance = 1.5f;          // Distancia al soltar la molécula
-    public Vector3 holdOffset = new Vector3(0, 1.0f, 0); // Offset para la molécula
-
-    // Parámetros de vibración
-    public float vibrationDuration = 0.2f;
-    public float vibrationLowFrequency = 0.5f;
-    public float vibrationHighFrequency = 0.5f;
+    public float moveSpeed = 8f;
+    public float rotationSpeed = 200f;
+    public LayerMask groundLayer;
+    public float groundCheckDistance = 0.1f;
+    public Camera mainCamera;
+    public Transform topDownView;
 
     private Rigidbody rb;
-    private GameObject heldMolecule = null;
+    private Vector3 inputDirection;
     private bool isGrounded;
+    private Vector3 originalCameraPosition;
+    private Quaternion originalCameraRotation;
+    private bool isTopDownActive = false;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        // Evitar que se incline: congelar rotación en X y Z
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-        rb.useGravity = true;
+        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezeRotationY;
+
+        originalCameraPosition = mainCamera.transform.position;
+        originalCameraRotation = mainCamera.transform.rotation;
     }
 
     void Update()
     {
-        // Movimiento: usar Input.GetAxis("Vertical") para combinar teclado y mando (W/S o joystick izquierdo)
-        float verticalInput = Input.GetAxis("Vertical");
-        if (Mathf.Abs(verticalInput) < 0.1f)
+        if (Input.GetKeyDown(KeyCode.R))
         {
-            if (Input.GetKey(KeyCode.W))
-                verticalInput = 1f;
-            else if (Input.GetKey(KeyCode.S))
-                verticalInput = -1f;
-        }
-        // (El movimiento horizontal se gestiona en FixedUpdate para preservar la gravedad)
+            isTopDownActive = !isTopDownActive;
 
-        // Rotación del jugador (solo en el suelo) usando Input.GetAxis("Horizontal") o teclas A/D
-        float horizontalInput = Input.GetAxis("Horizontal");
-        if (Mathf.Abs(horizontalInput) < 0.1f)
-        {
-            if (Input.GetKey(KeyCode.A))
-                horizontalInput = -1f;
-            else if (Input.GetKey(KeyCode.D))
-                horizontalInput = 1f;
-        }
-        if (isGrounded)
-        {
-            transform.Rotate(0, horizontalInput * rotationSpeed * Time.deltaTime, 0);
+            if (!isTopDownActive)
+            {
+                DeactivateTopDownView();
+            }
         }
 
-        // Salto: se activa con Space o botón A del mando (JoystickButton0)
-        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton0)) && isGrounded)
+        if (!isTopDownActive)
         {
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-            isGrounded = false;
-        }
+            // Intercambiar controles: Derecha = Avanzar, Izquierda = Retroceder
+            float vertical = Input.GetAxis("Horizontal");
+            float horizontal = -Input.GetAxis("Vertical");
 
-        // Agarrar/Soltar molécula: se activa con F o botón B del mando (JoystickButton1)
-        if (Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.JoystickButton1))
-        {
-            if (heldMolecule == null)
-                PickUpMolecule();
-            else
-                DropMolecule();
+            inputDirection = new Vector3(horizontal, 0f, vertical).normalized;
         }
-
-        // Actualizar la posición de la molécula recogida para que siga al jugador
-        if (heldMolecule != null)
+        else
         {
-            heldMolecule.transform.position = holdPosition.position + holdOffset;
+            inputDirection = Vector3.zero;
+
+            // MANTENER la posici�n de c�mara top-down en cada frame
+            mainCamera.transform.position = topDownView.position;
+            mainCamera.transform.rotation = topDownView.rotation;
         }
     }
-
     void FixedUpdate()
     {
-        // Movimiento horizontal: se calcula la velocidad manteniendo la componente vertical
-        float verticalInput = Input.GetAxis("Vertical");
-        if (Mathf.Abs(verticalInput) < 0.1f)
+        CheckGround();
+
+        if (inputDirection.magnitude > 0.01f)
         {
-            if (Input.GetKey(KeyCode.W))
-                verticalInput = 1f;
-            else if (Input.GetKey(KeyCode.S))
-                verticalInput = -1f;
+            Vector3 targetVelocity = inputDirection * moveSpeed;
+            rb.linearVelocity = new Vector3(targetVelocity.x, rb.linearVelocity.y, targetVelocity.z);
+
+            Quaternion targetRotation = Quaternion.LookRotation(inputDirection);
+            rb.MoveRotation(Quaternion.RotateTowards(rb.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime));
         }
-        Vector3 horizontalVelocity = transform.forward * verticalInput * moveSpeed;
-        horizontalVelocity.y = rb.linearVelocity.y; // Preservar la velocidad vertical (gravedad)
-        rb.linearVelocity = horizontalVelocity;
+        else
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+        }
     }
 
-   private void PickUpMolecule()
-{
-    Collider[] colliders = Physics.OverlapSphere(transform.position, pickupRange);
-    foreach (Collider col in colliders)
+    void CheckGround()
     {
-        if (col.CompareTag("molecule"))
-        {
-            heldMolecule = col.gameObject;
-            heldMolecule.transform.SetParent(holdPosition);
-            // Desactivar el collider para que no interfiera con las colisiones del jugador
-            Collider moleculeCollider = heldMolecule.GetComponent<Collider>();
-            if(moleculeCollider != null)
-                moleculeCollider.enabled = false;
-            // Opcional: se puede optar por no poner isKinematic o mantenerlo, según el comportamiento deseado
-            break;
-        }
+        Ray ray = new Ray(transform.position + Vector3.up * 0.1f, Vector3.down);
+        isGrounded = Physics.Raycast(ray, groundCheckDistance + 0.1f, groundLayer);
+    }
+
+    void ActivateTopDownView()
+    {
+        mainCamera.transform.SetParent(topDownView); // Se vuelve hija del topDownView
+        mainCamera.transform.localPosition = Vector3.zero;
+        mainCamera.transform.localRotation = Quaternion.identity;
+    }
+
+    void DeactivateTopDownView()
+    {
+        mainCamera.transform.SetParent(null); // La separamos
+        mainCamera.transform.position = originalCameraPosition;
+        mainCamera.transform.rotation = originalCameraRotation;
     }
 }
 
-private void DropMolecule()
-{
-    if (heldMolecule != null)
-    {
-        heldMolecule.transform.SetParent(null);
-        heldMolecule.transform.position = transform.position + transform.forward * dropDistance;
-        // Reactivar el collider de la molécula al soltarla
-        Collider moleculeCollider = heldMolecule.GetComponent<Collider>();
-        if(moleculeCollider != null)
-            moleculeCollider.enabled = true;
-        // Opcional: si se cambió alguna propiedad del Rigidbody, se puede resetear aquí
-        heldMolecule = null;
-    }
-}
 
-    void OnCollisionEnter(Collision collision)
-    {
-        // Al colisionar, iniciar vibración del mando
-        StartCoroutine(VibrateController(vibrationDuration, vibrationLowFrequency, vibrationHighFrequency));
-    }
-
-    private IEnumerator VibrateController(float duration, float lowFrequency, float highFrequency)
-    {
-        #if ENABLE_INPUT_SYSTEM
-        if (Gamepad.current != null)
-        {
-            Gamepad.current.SetMotorSpeeds(lowFrequency, highFrequency);
-            yield return new WaitForSeconds(duration);
-            Gamepad.current.SetMotorSpeeds(0, 0);
-        }
-        #endif
-        yield return null;
-    }
-
-    void OnCollisionStay(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("piso"))
-        {
-            isGrounded = true;
-        }
-    }
-
-    void OnCollisionExit(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("piso"))
-        {
-            isGrounded = false;
-        }
-    }
-}
