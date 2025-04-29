@@ -2,6 +2,7 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    // Movimiento
     public float moveSpeed = 8f;
     public float rotationSpeed = 200f;
     public LayerMask groundLayer;
@@ -16,6 +17,13 @@ public class PlayerController : MonoBehaviour
     private Quaternion originalCameraRotation;
     private bool isTopDownActive = false;
 
+    // Sonido
+    public AudioSource pasos;
+    private bool Hactivo;
+    private bool Vactivo;
+    public float minDistance = 5f;    // Distancia mínima para volumen máximo
+    public float maxDistance = 20f;   // Distancia a la que el volumen será mínimo
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -23,10 +31,19 @@ public class PlayerController : MonoBehaviour
 
         originalCameraPosition = mainCamera.transform.position;
         originalCameraRotation = mainCamera.transform.rotation;
+
+        // Configuración inicial del AudioSource (si no se asigna manualmente)
+        if (pasos != null)
+        {
+            pasos.spatialBlend = 0f;  // Modo 2D para panorama estéreo
+            pasos.loop = true;        // Para sonido continuo al caminar
+            pasos.playOnAwake = false;
+        }
     }
 
     void Update()
     {
+        // Alternar vista con R
         if (Input.GetKeyDown(KeyCode.R))
         {
             isTopDownActive = !isTopDownActive;
@@ -39,7 +56,7 @@ public class PlayerController : MonoBehaviour
 
         if (!isTopDownActive)
         {
-            // Intercambiar controles: Derecha = Avanzar, Izquierda = Retroceder
+            // Controles invertidos: Derecha = Avanzar, Izquierda = Retroceder
             float vertical = Input.GetAxis("Horizontal");
             float horizontal = -Input.GetAxis("Vertical");
 
@@ -48,12 +65,54 @@ public class PlayerController : MonoBehaviour
         else
         {
             inputDirection = Vector3.zero;
-
-            // MANTENER la posici�n de c�mara top-down en cada frame
             mainCamera.transform.position = topDownView.position;
             mainCamera.transform.rotation = topDownView.rotation;
         }
+
+        // Control de sonido de pasos
+        HandleFootsteps();
+
+        // Ajustar panorama y volumen basado en la posición relativa a la cámara
+        if (pasos != null && pasos.isPlaying)
+        {
+            Vector3 cameraRelativePos = mainCamera.transform.InverseTransformPoint(transform.position);
+            
+            // Panorama estéreo (-1 = izquierda, 1 = derecha)
+            float stereoPan = Mathf.Clamp(cameraRelativePos.x / 2f, -1f, 1f);
+            pasos.panStereo = stereoPan;
+
+            // Volumen basado en distancia
+            float distanceToCamera = Vector3.Distance(transform.position, mainCamera.transform.position);
+            pasos.volume = Mathf.Lerp(0.3f, 1f, Mathf.InverseLerp(maxDistance, minDistance, distanceToCamera));
+        }
     }
+
+    void HandleFootsteps()
+    {
+        if (Input.GetButtonDown("Horizontal"))
+        {
+            Hactivo = true;
+            if (!pasos.isPlaying) pasos.Play();
+        }
+        if (Input.GetButtonDown("Vertical"))
+        {
+            Vactivo = true;
+            if (!pasos.isPlaying) pasos.Play();
+        }
+
+        if (Input.GetButtonUp("Horizontal"))
+        {
+            Hactivo = false;
+            if (Vactivo == false) pasos.Pause();
+        }
+
+        if (Input.GetButtonUp("Vertical"))
+        {
+            Vactivo = false;
+            if (Hactivo == false) pasos.Pause();
+        }
+    }
+
     void FixedUpdate()
     {
         CheckGround();
@@ -80,17 +139,15 @@ public class PlayerController : MonoBehaviour
 
     void ActivateTopDownView()
     {
-        mainCamera.transform.SetParent(topDownView); // Se vuelve hija del topDownView
+        mainCamera.transform.SetParent(topDownView);
         mainCamera.transform.localPosition = Vector3.zero;
         mainCamera.transform.localRotation = Quaternion.identity;
     }
 
     void DeactivateTopDownView()
     {
-        mainCamera.transform.SetParent(null); // La separamos
+        mainCamera.transform.SetParent(null);
         mainCamera.transform.position = originalCameraPosition;
         mainCamera.transform.rotation = originalCameraRotation;
     }
-}
-
-
+}   
