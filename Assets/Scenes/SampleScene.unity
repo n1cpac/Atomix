@@ -840,6 +840,7 @@ GameObject:
   - component: {fileID: 330585545}
   - component: {fileID: 330585547}
   - component: {fileID: 330585548}
+  - component: {fileID: 330585549}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -977,6 +978,14 @@ MonoBehaviour:
   zoomSpeed: 5
   height: 5
   smoothTime: 0.2
+--- !u!81 &330585549
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1383,6 +1392,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 3
+  jumpForce: 50
   rotationSpeed: 300
   groundLayer:
     serializedVersion: 2
@@ -1390,9 +1400,16 @@ MonoBehaviour:
   groundCheckDistance: 0.1
   mainCamera: {fileID: 330585545}
   topDownView: {fileID: 185234365}
+  holdPosition: {fileID: 0}
+  pickupRange: 10
+  dropDistance: 1.5
+  holdOffset: {x: 0, y: 1, z: 0}
   pasos: {fileID: 834589360}
   minDistance: 5
   maxDistance: 20
+  vibrationDuration: 0.2
+  vibrationLowFrequency: 0.5
+  vibrationHighFrequency: 0.5
 --- !u!54 &834589354
 Rigidbody:
   m_ObjectHideFlags: 0

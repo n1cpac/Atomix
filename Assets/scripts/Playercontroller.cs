@@ -1,65 +1,79 @@
 using UnityEngine;
+using System.Collections;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 public class PlayerController : MonoBehaviour
 {
     // Movimiento
-    public float moveSpeed = 8f;
-    public float rotationSpeed = 200f;
+    public float moveSpeed = 70f;
+    public float jumpForce = 50f;
+    public float rotationSpeed = 100f;
     public LayerMask groundLayer;
     public float groundCheckDistance = 0.1f;
+
+    // Cámara
     public Camera mainCamera;
     public Transform topDownView;
-
-    private Rigidbody rb;
-    private Vector3 inputDirection;
-    private bool isGrounded;
     private Vector3 originalCameraPosition;
     private Quaternion originalCameraRotation;
     private bool isTopDownActive = false;
 
-    // Sonido
+    // Interacción
+    public Transform holdPosition;
+    public float pickupRange = 10f;
+    public float dropDistance = 1.5f;
+    public Vector3 holdOffset = new Vector3(0, 1.0f, 0);
+    private GameObject heldMolecule = null;
+
+    // Audio
     public AudioSource pasos;
+    public float minDistance = 5f;
+    public float maxDistance = 20f;
     private bool Hactivo;
     private bool Vactivo;
-    public float minDistance = 5f;    // Distancia mínima para volumen máximo
-    public float maxDistance = 20f;   // Distancia a la que el volumen será mínimo
+
+    // Vibración
+    public float vibrationDuration = 0.2f;
+    public float vibrationLowFrequency = 0.5f;
+    public float vibrationHighFrequency = 0.5f;
+
+    // Interno
+    private Rigidbody rb;
+    private Vector3 inputDirection;
+    private bool isGrounded;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezeRotationY;
+        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        rb.useGravity = true;
 
         originalCameraPosition = mainCamera.transform.position;
         originalCameraRotation = mainCamera.transform.rotation;
 
-        // Configuración inicial del AudioSource (si no se asigna manualmente)
         if (pasos != null)
         {
-            pasos.spatialBlend = 0f;  // Modo 2D para panorama estéreo
-            pasos.loop = true;        // Para sonido continuo al caminar
+            pasos.spatialBlend = 0f;
+            pasos.loop = true;
             pasos.playOnAwake = false;
         }
     }
 
     void Update()
     {
-        // Alternar vista con R
         if (Input.GetKeyDown(KeyCode.R))
         {
             isTopDownActive = !isTopDownActive;
-
             if (!isTopDownActive)
-            {
                 DeactivateTopDownView();
-            }
         }
 
         if (!isTopDownActive)
         {
-            // Controles invertidos: Derecha = Avanzar, Izquierda = Retroceder
             float vertical = Input.GetAxis("Horizontal");
             float horizontal = -Input.GetAxis("Vertical");
-
             inputDirection = new Vector3(horizontal, 0f, vertical).normalized;
         }
         else
@@ -69,72 +83,135 @@ public class PlayerController : MonoBehaviour
             mainCamera.transform.rotation = topDownView.rotation;
         }
 
-        // Control de sonido de pasos
         HandleFootsteps();
 
-        // Ajustar panorama y volumen basado en la posición relativa a la cámara
         if (pasos != null && pasos.isPlaying)
         {
             Vector3 cameraRelativePos = mainCamera.transform.InverseTransformPoint(transform.position);
-            
-            // Panorama estéreo (-1 = izquierda, 1 = derecha)
-            float stereoPan = Mathf.Clamp(cameraRelativePos.x / 2f, -1f, 1f);
-            pasos.panStereo = stereoPan;
-
-            // Volumen basado en distancia
+            pasos.panStereo = Mathf.Clamp(cameraRelativePos.x / 2f, -1f, 1f);
             float distanceToCamera = Vector3.Distance(transform.position, mainCamera.transform.position);
             pasos.volume = Mathf.Lerp(0.3f, 1f, Mathf.InverseLerp(maxDistance, minDistance, distanceToCamera));
         }
-    }
 
-    void HandleFootsteps()
-    {
-        if (Input.GetButtonDown("Horizontal"))
+        float verticalInput = Input.GetAxis("Vertical");
+        if (Mathf.Abs(verticalInput) < 0.1f)
         {
-            Hactivo = true;
-            if (!pasos.isPlaying) pasos.Play();
-        }
-        if (Input.GetButtonDown("Vertical"))
-        {
-            Vactivo = true;
-            if (!pasos.isPlaying) pasos.Play();
+            if (Input.GetKey(KeyCode.W)) verticalInput = 1f;
+            else if (Input.GetKey(KeyCode.S)) verticalInput = -1f;
         }
 
-        if (Input.GetButtonUp("Horizontal"))
+        float horizontalInput = Input.GetAxis("Horizontal");
+        if (Mathf.Abs(horizontalInput) < 0.1f)
         {
-            Hactivo = false;
-            if (Vactivo == false) pasos.Pause();
+            if (Input.GetKey(KeyCode.A)) horizontalInput = -1f;
+            else if (Input.GetKey(KeyCode.D)) horizontalInput = 1f;
         }
 
-        if (Input.GetButtonUp("Vertical"))
+        if (isGrounded)
+            transform.Rotate(0, horizontalInput * rotationSpeed * Time.deltaTime, 0);
+
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton0)) && isGrounded)
         {
-            Vactivo = false;
-            if (Hactivo == false) pasos.Pause();
+            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            isGrounded = false;
         }
+
+        if (Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.JoystickButton1))
+        {
+            if (heldMolecule == null) PickUpMolecule();
+            else DropMolecule();
+        }
+
+        if (heldMolecule != null)
+            heldMolecule.transform.position = holdPosition.position + holdOffset;
     }
 
     void FixedUpdate()
     {
         CheckGround();
 
-        if (inputDirection.magnitude > 0.01f)
+        float verticalInput = Input.GetAxis("Vertical");
+        if (Mathf.Abs(verticalInput) < 0.1f)
         {
-            Vector3 targetVelocity = inputDirection * moveSpeed;
-            rb.linearVelocity = new Vector3(targetVelocity.x, rb.linearVelocity.y, targetVelocity.z);
+            if (Input.GetKey(KeyCode.W)) verticalInput = 1f;
+            else if (Input.GetKey(KeyCode.S)) verticalInput = -1f;
+        }
 
-            Quaternion targetRotation = Quaternion.LookRotation(inputDirection);
-            rb.MoveRotation(Quaternion.RotateTowards(rb.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime));
-        }
-        else
-        {
-            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
-        }
+        Vector3 horizontalVelocity = transform.forward * verticalInput * moveSpeed;
+        horizontalVelocity.y = rb.linearVelocity.y;
+        rb.linearVelocity = horizontalVelocity;
+    }
+
+    void HandleFootsteps()
+    {
+        if (Input.GetButtonDown("Horizontal")) { Hactivo = true; if (!pasos.isPlaying) pasos.Play(); }
+        if (Input.GetButtonDown("Vertical")) { Vactivo = true; if (!pasos.isPlaying) pasos.Play(); }
+        if (Input.GetButtonUp("Horizontal")) { Hactivo = false; if (!Vactivo) pasos.Pause(); }
+        if (Input.GetButtonUp("Vertical")) { Vactivo = false; if (!Hactivo) pasos.Pause(); }
     }
 
     void CheckGround()
     {
         Ray ray = new Ray(transform.position + Vector3.up * 0.1f, Vector3.down);
         isGrounded = Physics.Raycast(ray, groundCheckDistance + 0.1f, groundLayer);
+    }
+
+    private void PickUpMolecule()
+    {
+        Collider[] colliders = Physics.OverlapSphere(transform.position, pickupRange);
+        foreach (Collider col in colliders)
+        {
+            if (col.CompareTag("molecule"))
+            {
+                heldMolecule = col.gameObject;
+                heldMolecule.transform.SetParent(holdPosition);
+                Collider moleculeCollider = heldMolecule.GetComponent<Collider>();
+                if (moleculeCollider != null) moleculeCollider.enabled = false;
+                break;
+            }
+        }
+    }
+
+    private void DropMolecule()
+    {
+        if (heldMolecule != null)
+        {
+            heldMolecule.transform.SetParent(null);
+            heldMolecule.transform.position = transform.position + transform.forward * dropDistance;
+            Collider moleculeCollider = heldMolecule.GetComponent<Collider>();
+            if (moleculeCollider != null) moleculeCollider.enabled = true;
+            heldMolecule = null;
+        }
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        StartCoroutine(VibrateController(vibrationDuration, vibrationLowFrequency, vibrationHighFrequency));
+    }
+
+    private IEnumerator VibrateController(float duration, float lowFrequency, float highFrequency)
+    {
+    #if ENABLE_INPUT_SYSTEM
+        if (Gamepad.current != null)
+        {
+            Gamepad.current.SetMotorSpeeds(lowFrequency, highFrequency);
+            yield return new WaitForSeconds(duration);
+            Gamepad.current.SetMotorSpeeds(0, 0);
+        }
+    #endif
+        yield return null;
+    }
+
+    void OnCollisionStay(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("piso"))
+            isGrounded = true;
+    }
+
+    void OnCollisionExit(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("piso"))
+            isGrounded = false;
     }
 
     void ActivateTopDownView()
@@ -150,4 +227,4 @@ public class PlayerController : MonoBehaviour
         mainCamera.transform.position = originalCameraPosition;
         mainCamera.transform.rotation = originalCameraRotation;
     }
-}   
+}
