@@ -1,39 +1,44 @@
 using UnityEngine;
 
-public class Conector : MonoBehaviour
+public class EnlaceAutoConector : MonoBehaviour
 {
-    public Transform[] puntosConexion; // posiciones alrededor del conector
-    public GameObject[] enlacesPrefabs; // prefabs de enlaces correspondientes
-    public float distanciaMaxima = 2f;
+    [Header("Configuración de detección")]
+    public string tagDeLaMolecula = "molecule";
+    public float distanciaMaxima = 2.0f;
 
-    private void Update()
+    void Start()
     {
-        if (Input.GetKeyDown(KeyCode.F))
-        {
-            ConectarMoleculas();
-        }
+        ConectarAlObjetoConTag();
     }
 
-    void ConectarMoleculas()
+    void ConectarAlObjetoConTag()
     {
-        GameObject[] moleculas = GameObject.FindGameObjectsWithTag("Molecula1"); // puedes hacer un loop para todas
-        for (int i = 0; i < moleculas.Length && i < puntosConexion.Length; i++)
-        {
-            GameObject molecula = moleculas[i];
-            float distancia = Vector3.Distance(transform.position, molecula.transform.position);
-            if (distancia <= distanciaMaxima)
-            {
-                // Posicionar molécula
-                molecula.transform.position = puntosConexion[i].position;
-                molecula.transform.rotation = Quaternion.identity; // o lo que necesites
+        GameObject[] moleculas = GameObject.FindGameObjectsWithTag(tagDeLaMolecula);
 
-                // Instanciar y posicionar enlace
-                GameObject enlace = Instantiate(enlacesPrefabs[i], transform.position, Quaternion.identity);
-                Vector3 direccion = molecula.transform.position - transform.position;
-                enlace.transform.position = transform.position + direccion / 2f; // centro del enlace
-                enlace.transform.up = direccion.normalized; // orienta el cilindro
-                enlace.transform.localScale = new Vector3(0.1f, direccion.magnitude / 2f, 0.1f); // escala eje Y
+        GameObject objetivoMasCercano = null;
+        float distanciaMinima = Mathf.Infinity;
+
+        foreach (GameObject molecula in moleculas)
+        {
+            float distancia = Vector3.Distance(transform.position, molecula.transform.position);
+            if (distancia < distanciaMinima && distancia <= distanciaMaxima)
+            {
+                distanciaMinima = distancia;
+                objetivoMasCercano = molecula;
             }
+        }
+
+        if (objetivoMasCercano != null)
+        {
+            transform.LookAt(objetivoMasCercano.transform);
+
+            float distancia = Vector3.Distance(transform.position, objetivoMasCercano.transform.position);
+            transform.localScale = new Vector3(0.1f, distancia / 2f, 0.1f);
+            transform.position = (transform.position + objetivoMasCercano.transform.position) / 2f;
+        }
+        else
+        {
+            Debug.LogWarning("No se encontró ninguna molécula cercana con el tag: " + tagDeLaMolecula);
         }
     }
 }

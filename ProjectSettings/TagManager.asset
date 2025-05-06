@@ -9,6 +9,9 @@ TagManager:
   - piso
   - molecule
   - connector
+  - molecule2
+  - molecule3
+  - molecule4
   layers:
   - Default
   - TransparentFX
