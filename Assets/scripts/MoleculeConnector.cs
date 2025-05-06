@@ -3,9 +3,17 @@ using System.Collections.Generic;
 
 public class MoleculeConnector : MonoBehaviour
 {
+    [Header("Connection Settings")]
     public bool isCentralConnector;
-    public float connectionRange = 0.5f; // Radio reducido
-    [SerializeField] private GameObject enlaceVisualPrefab; // Prefab del enlace visual
+    public float connectionRange = 0.5f;
+    [SerializeField] private GameObject enlaceVisualPrefab;
+
+    [Header("Audio Settings")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip connectionSound;
+    [Range(0.1f, 1f)] public float soundVolume = 0.7f;
+    public bool randomizePitch = true;
+    [Range(0.1f, 0.3f)] public float pitchVariation = 0.15f;
 
     private List<GameObject> connectedMolecules = new List<GameObject>();
 
@@ -57,14 +65,15 @@ public class MoleculeConnector : MonoBehaviour
 
     private void ConnectMolecule(GameObject molecule)
     {
-        // Evita reconexiones
         if (connectedMolecules.Contains(molecule)) return;
 
-        // Configura la posición y el parentesco
+        // Reproducir sonido de conexión
+        PlayConnectionSound();
+
+        // Configurar conexión física
         molecule.transform.SetParent(transform, true);
         molecule.transform.position = GetClosestConnectionPoint(molecule);
 
-        // Fijar física
         Rigidbody rb = molecule.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -73,26 +82,42 @@ public class MoleculeConnector : MonoBehaviour
             rb.constraints = RigidbodyConstraints.FreezeAll;
         }
 
-        // Colisiones normales
         Collider collider = molecule.GetComponent<Collider>();
         if (collider != null)
         {
             collider.isTrigger = false;
         }
 
-        // Agrega a la lista
         connectedMolecules.Add(molecule);
-
-        // Crear el enlace visual entre ambos
         CreateVisualBond(gameObject, molecule);
 
-        Debug.Log("Molécula conectada correctamente");
+        Debug.Log("Molécula conectada: " + molecule.name);
+    }
+
+    private void PlayConnectionSound()
+    {
+        if (audioSource == null || connectionSound == null)
+        {
+            Debug.LogWarning("Componente de audio no configurado");
+            return;
+        }
+
+        if (randomizePitch)
+        {
+            audioSource.pitch = Random.Range(1f - pitchVariation, 1f + pitchVariation);
+        }
+        else
+        {
+            audioSource.pitch = 1f;
+        }
+
+        audioSource.PlayOneShot(connectionSound, soundVolume);
     }
 
     private Vector3 GetClosestConnectionPoint(GameObject molecule)
     {
         Vector3 closestPoint = GetComponent<Collider>().ClosestPoint(molecule.transform.position);
-        return closestPoint + (transform.position - closestPoint).normalized * 0.2f; // Aumenta separación visual
+        return closestPoint + (transform.position - closestPoint).normalized * 0.2f;
     }
 
     private void CreateVisualBond(GameObject from, GameObject to)
@@ -106,7 +131,7 @@ public class MoleculeConnector : MonoBehaviour
         enlace.transform.position = (start + end) / 2f;
         enlace.transform.up = (end - start).normalized;
         float distancia = Vector3.Distance(start, end);
-        enlace.transform.localScale = new Vector3(0.1f, distancia / 2f + 0.05f, 0.1f); // Más ancho y largo
+        enlace.transform.localScale = new Vector3(0.1f, distancia / 2f + 0.05f, 0.1f);
     }
 
     void OnDrawGizmosSelected()

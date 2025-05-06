@@ -19,6 +19,10 @@ public class PlayerController : MonoBehaviour
     private Vector3 originalCameraPosition;
     private Quaternion originalCameraRotation;
     private bool isTopDownActive = false;
+    public float zoomSpeed = 5f;
+    public float minZoom = 5f;
+    public float maxZoom = 20f;
+    private float currentZoom;
 
     // Interacción
     public Transform holdPosition;
@@ -33,6 +37,8 @@ public class PlayerController : MonoBehaviour
     public float maxDistance = 20f;
     private bool Hactivo;
     private bool Vactivo;
+    private bool rightStickHactivo;
+    private bool rightStickVactivo;
 
     // Vibración
     public float vibrationDuration = 0.2f;
@@ -43,6 +49,8 @@ public class PlayerController : MonoBehaviour
     private Rigidbody rb;
     private Vector3 inputDirection;
     private bool isGrounded;
+    private float rightStickX;
+    private float rightStickY;
 
     void Start()
     {
@@ -52,6 +60,7 @@ public class PlayerController : MonoBehaviour
 
         originalCameraPosition = mainCamera.transform.position;
         originalCameraRotation = mainCamera.transform.rotation;
+        currentZoom = Vector3.Distance(mainCamera.transform.position, transform.position);
 
         if (pasos != null)
         {
@@ -63,11 +72,14 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.R))
+        // Cambio de vista cenital/ortográfica
+        if (Input.GetKeyDown(KeyCode.R) || IsRightStickPressed())
         {
             isTopDownActive = !isTopDownActive;
             if (!isTopDownActive)
                 DeactivateTopDownView();
+            else
+                ActivateTopDownView();
         }
 
         if (!isTopDownActive)
@@ -107,10 +119,26 @@ public class PlayerController : MonoBehaviour
             else if (Input.GetKey(KeyCode.D)) horizontalInput = 1f;
         }
 
+        // Controlamos la rotación con teclado y con joystick derecho
         if (isGrounded)
+        {
             transform.Rotate(0, horizontalInput * rotationSpeed * Time.deltaTime, 0);
+        }
 
-        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton0)) && isGrounded)
+        // Zoom con joystick derecho (vertical)
+        rightStickY = Input.GetAxis("RightStickVertical");
+        if (Mathf.Abs(rightStickY) > 0.1f && !isTopDownActive)
+        {
+            currentZoom -= rightStickY * zoomSpeed * Time.deltaTime;
+            currentZoom = Mathf.Clamp(currentZoom, minZoom, maxZoom);
+
+            // Aplicar zoom a la cámara
+            Vector3 direction = (mainCamera.transform.position - transform.position).normalized;
+            mainCamera.transform.position = transform.position + direction * currentZoom;
+        }
+
+        // Salto con espacio o botón A del mando
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetButtonDown("Jump")) && isGrounded)
         {
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
             isGrounded = false;
@@ -144,10 +172,62 @@ public class PlayerController : MonoBehaviour
 
     void HandleFootsteps()
     {
+        // Detección de entradas por teclado
         if (Input.GetButtonDown("Horizontal")) { Hactivo = true; if (!pasos.isPlaying) pasos.Play(); }
         if (Input.GetButtonDown("Vertical")) { Vactivo = true; if (!pasos.isPlaying) pasos.Play(); }
-        if (Input.GetButtonUp("Horizontal")) { Hactivo = false; if (!Vactivo) pasos.Pause(); }
-        if (Input.GetButtonUp("Vertical")) { Vactivo = false; if (!Hactivo) pasos.Pause(); }
+        if (Input.GetButtonUp("Horizontal")) { Hactivo = false; if (!Vactivo && !rightStickHactivo && !rightStickVactivo) pasos.Pause(); }
+        if (Input.GetButtonUp("Vertical")) { Vactivo = false; if (!Hactivo && !rightStickHactivo && !rightStickVactivo) pasos.Pause(); }
+
+        // Detección de entradas por mando - usando los mismos ejes que ya se están usando para el movimiento
+        float leftStickX = Input.GetAxis("Horizontal");
+        float leftStickY = Input.GetAxis("Vertical");
+
+        // Si hay movimiento significativo en el mando
+        if (Mathf.Abs(leftStickX) > 0.1f)
+        {
+            if (!rightStickHactivo)
+            {
+                rightStickHactivo = true;
+                if (!pasos.isPlaying) pasos.Play();
+            }
+        }
+        else
+        {
+            if (rightStickHactivo)
+            {
+                rightStickHactivo = false;
+                if (!Hactivo && !Vactivo && !rightStickVactivo) pasos.Pause();
+            }
+        }
+
+        if (Mathf.Abs(leftStickY) > 0.1f)
+        {
+            if (!rightStickVactivo)
+            {
+                rightStickVactivo = true;
+                if (!pasos.isPlaying) pasos.Play();
+            }
+        }
+        else
+        {
+            if (rightStickVactivo)
+            {
+                rightStickVactivo = false;
+                if (!Hactivo && !Vactivo && !rightStickHactivo) pasos.Pause();
+            }
+        }
+    }
+
+    // Verifica si el joystick derecho está siendo presionado
+    bool IsRightStickPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (Gamepad.current != null)
+        {
+            return Gamepad.current.rightStickButton.wasPressedThisFrame;
+        }
+#endif
+        return Input.GetKeyDown(KeyCode.JoystickButton8) || Input.GetButtonDown("RightStickClick"); // Joystick derecho suele ser botón 8 o 9 dependiendo del mando
     }
 
     void CheckGround()
@@ -191,14 +271,22 @@ public class PlayerController : MonoBehaviour
 
     private IEnumerator VibrateController(float duration, float lowFrequency, float highFrequency)
     {
-    #if ENABLE_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
         if (Gamepad.current != null)
         {
             Gamepad.current.SetMotorSpeeds(lowFrequency, highFrequency);
             yield return new WaitForSeconds(duration);
             Gamepad.current.SetMotorSpeeds(0, 0);
         }
-    #endif
+#else
+        // Para la API antigua de Input
+        if (SystemInfo.supportsVibration)
+        {
+            GamePad.SetVibration(0, lowFrequency, highFrequency);
+            yield return new WaitForSeconds(duration);
+            GamePad.SetVibration(0, 0, 0);
+        }
+#endif
         yield return null;
     }
 
