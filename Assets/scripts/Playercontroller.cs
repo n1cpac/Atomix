@@ -236,21 +236,22 @@ if (isGrounded)
         isGrounded = Physics.Raycast(ray, groundCheckDistance + 0.1f, groundLayer);
     }
 
-    private void PickUpMolecule()
+private void PickUpMolecule()
+{
+    Collider[] colliders = Physics.OverlapSphere(transform.position, pickupRange);
+    foreach (Collider col in colliders)
     {
-        Collider[] colliders = Physics.OverlapSphere(transform.position, pickupRange);
-        foreach (Collider col in colliders)
+        if (col.CompareTag("molecule") || col.CompareTag("Hidrogeno") || col.CompareTag("Metano"))
         {
-            if (col.CompareTag("molecule"))
-            {
-                heldMolecule = col.gameObject;
-                heldMolecule.transform.SetParent(holdPosition);
-                Collider moleculeCollider = heldMolecule.GetComponent<Collider>();
-                if (moleculeCollider != null) moleculeCollider.enabled = false;
-                break;
-            }
+            heldMolecule = col.gameObject;
+            heldMolecule.transform.SetParent(holdPosition);
+            Collider moleculeCollider = heldMolecule.GetComponent<Collider>();
+            if (moleculeCollider != null) moleculeCollider.enabled = false;
+            break;
         }
     }
+}
+
 
     private void DropMolecule()
     {

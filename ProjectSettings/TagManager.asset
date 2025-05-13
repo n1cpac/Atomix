@@ -12,6 +12,8 @@ TagManager:
   - molecule2
   - molecule3
   - molecule4
+  - Hidrogeno
+  - Metano
   layers:
   - Default
   - TransparentFX
