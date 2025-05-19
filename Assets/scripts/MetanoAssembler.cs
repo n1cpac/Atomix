@@ -12,37 +12,37 @@ public class MetanoAssembler : MonoBehaviour
 {
     [Tooltip("Array con los prefabs de las diferentes etapas del metano (0-4)")]
     public GameObject[] metanoStages;  // Arrastrar los prefabs metano0, metano1, metano2, metano3, metanocompleto
-    
+
     [Tooltip("Referencia a la instancia actual del metano en la escena")]
     public GameObject currentMetano;   // Referencia a la instancia actual del metano
-    
+
     [Tooltip("Etapa actual del metano (0-4)")]
     [SerializeField] private int currentStage = 0;      // La etapa actual del metano (comienza en 0)
 
     [Tooltip("Si es verdadero, mostrará mensajes de depuración adicionales")]
     public bool showDebugGizmos = true;
-    
+
     [Tooltip("Tiempo de espera en segundos antes de volver al menú tras completar el nivel")]
     public float tiempoEsperaFinNivel = 2.0f;
-    
+
     [Tooltip("Nombre de la escena que contiene el menú de niveles")]
     public string menuInicialSceneName = "MenuInicial";
-    
+
     [Tooltip("Nombre del GameObject que contiene el grid de niveles")]
     public string gridNivelesName = "grid_niveles";
-    
+
     [Tooltip("Ruta del video a reproducir al completar el nivel (desde Assets/Videos/)")]
     public string videoFileName = "completion_video.mp4";
-    
+
     [Tooltip("Canvas UI que contiene el reproductor de video")]
     public GameObject videoPlayerCanvas;
-    
+
     [Tooltip("RawImage donde se mostrará el video")]
     public UnityEngine.UI.RawImage videoRawImage;
-    
+
     // VideoPlayer que manejará la reproducción del video
     private VideoPlayer videoPlayer;
-    
+
     // Indica si se está reproduciendo el video de finalización
     private bool isPlayingCompletionVideo = false;
 
@@ -62,10 +62,7 @@ public class MetanoAssembler : MonoBehaviour
         if (currentMetano == null)
         {
             Debug.LogWarning("MetanoAssembler: No se ha asignado un metano inicial. Buscando en la escena...");
-            
-            // Intentar encontrar un objeto con tag "Metano"
             currentMetano = GameObject.FindWithTag("Metano");
-            
             if (currentMetano == null)
             {
                 Debug.LogError("MetanoAssembler: No se encontró un metano inicial en la escena. Por favor, asigna uno manualmente.");
@@ -77,7 +74,7 @@ public class MetanoAssembler : MonoBehaviour
             }
         }
 
-        // Verificar que el currentMetano tenga un collider con isTrigger=true
+        // Verificar collider
         Collider metanoCollider = currentMetano.GetComponent<Collider>();
         if (metanoCollider == null)
         {
@@ -92,7 +89,7 @@ public class MetanoAssembler : MonoBehaviour
             metanoCollider.isTrigger = true;
         }
 
-        // Verificar que el currentMetano tenga un Rigidbody
+        // Verificar Rigidbody
         Rigidbody metanoRb = currentMetano.GetComponent<Rigidbody>();
         if (metanoRb == null)
         {
@@ -101,85 +98,62 @@ public class MetanoAssembler : MonoBehaviour
             metanoRb.isKinematic = true;
             metanoRb.useGravity = false;
         }
-        
-        // Asegurarse que tiene el tag correcto
+
+        // Tag
         if (currentMetano.tag != "Metano")
         {
             Debug.LogWarning("MetanoAssembler: El metano inicial no tiene el tag 'Metano'. Cambiando tag...");
             currentMetano.tag = "Metano";
         }
 
-        // Agregar el componente MetanoCollisionHandler al metano actual
+        // Handler y video
         AgregarCollisionHandler();
-        
-        // Configurar el reproductor de video si no existe
         SetupVideoPlayer();
-        
-        // Desactivar el canvas de video al inicio
+
         if (videoPlayerCanvas != null)
-        {
             videoPlayerCanvas.SetActive(false);
-        }
-        
+
         Debug.Log("MetanoAssembler: Inicializado. Etapa actual: " + currentStage);
-        
-        // Mostrar gizmos si está habilitado
+
         if (showDebugGizmos && currentMetano != null)
         {
-            // Dibuja una esfera en la ubicación del metano actual para visualización en el editor
-            Debug.DrawLine(currentMetano.transform.position, 
-                          currentMetano.transform.position + Vector3.up * 2.0f, 
-                          Color.green, 10.0f);
+            Debug.DrawLine(currentMetano.transform.position,
+                           currentMetano.transform.position + Vector3.up * 2.0f,
+                           Color.green, 10.0f);
         }
     }
-    
+
     /// <summary>
     /// Configura el reproductor de video
     /// </summary>
     private void SetupVideoPlayer()
     {
-        // Si no tenemos un canvas para el video, intentamos buscarlo o crearlo
         if (videoPlayerCanvas == null)
         {
             videoPlayerCanvas = GameObject.Find("VideoPlayerCanvas");
-            
             if (videoPlayerCanvas == null)
-            {
                 Debug.LogWarning("VideoPlayerCanvas no encontrado. Por favor, crea un Canvas en la escena con nombre 'VideoPlayerCanvas'.");
-            }
         }
-        
-        // Si no tenemos un RawImage para el video, intentamos buscarlo
+
         if (videoRawImage == null && videoPlayerCanvas != null)
         {
             videoRawImage = videoPlayerCanvas.GetComponentInChildren<UnityEngine.UI.RawImage>();
-            
             if (videoRawImage == null)
-            {
                 Debug.LogWarning("No se encontró un RawImage para mostrar el video. Por favor, añade un RawImage al Canvas.");
-            }
         }
-        
-        // Crear o conseguir un VideoPlayer
+
         if (videoPlayer == null)
         {
-            // Verificar si existe un VideoPlayer en este GameObject
             videoPlayer = GetComponent<VideoPlayer>();
-            
             if (videoPlayer == null)
-            {
-                // Añadir VideoPlayer si no existe
                 videoPlayer = gameObject.AddComponent<VideoPlayer>();
-            }
         }
-        
-        // Configurar el VideoPlayer
+
         if (videoPlayer != null)
         {
-            // Configurar para reproducir en bucle
+            videoPlayer.playOnAwake = false;               // <-- Evita reproducción y sonido al iniciar
             videoPlayer.isLooping = true;
-            
-            // Configurar para reproducir en RawImage si existe
+
             if (videoRawImage != null)
             {
                 videoPlayer.renderMode = VideoRenderMode.RenderTexture;
@@ -188,23 +162,20 @@ public class MetanoAssembler : MonoBehaviour
             }
             else
             {
-                // Si no hay RawImage, reproducir en pantalla completa
                 videoPlayer.renderMode = VideoRenderMode.CameraFarPlane;
-                // Obtener o crear una cámara para reproducir el video
                 Camera videoCamera = GameObject.Find("VideoCamera")?.GetComponent<Camera>();
                 if (videoCamera == null)
                 {
                     GameObject videoCameraObj = new GameObject("VideoCamera");
                     videoCamera = videoCameraObj.AddComponent<Camera>();
-                    videoCamera.depth = 999; // Asegurar que se muestra por encima de todo
+                    videoCamera.depth = 999;
                     videoCamera.clearFlags = CameraClearFlags.SolidColor;
                     videoCamera.backgroundColor = Color.black;
-                    videoCameraObj.SetActive(false); // Desactivar inicialmente
+                    videoCameraObj.SetActive(false);
                 }
                 videoPlayer.targetCamera = videoCamera;
             }
-            
-            // Configurar la ruta del video
+
             try
             {
                 videoPlayer.source = VideoSource.Url;
@@ -215,320 +186,364 @@ public class MetanoAssembler : MonoBehaviour
             {
                 Debug.LogError("Error al configurar la ruta del video: " + e.Message);
             }
-            
-            // Preparar el video pero no reproducirlo aún
+
             videoPlayer.Prepare();
+            videoPlayer.SetDirectAudioMute(0, true);      // <-- Silencia la pista de audio por defecto
         }
     }
 
-    /// <summary>
-    /// Actualiza cada frame y verifica si se presiona ENTER para omitir el video
-    /// o si se presiona la tecla 5 para saltar directamente a la molécula completada
-    /// </summary>
     private void Update()
     {
-        // Si se está reproduciendo el video y se presiona ENTER, omitir el video
         if (isPlayingCompletionVideo && Input.GetKeyDown(KeyCode.Return))
         {
             Debug.Log("Se presionó ENTER. Omitiendo video y volviendo al menú...");
             StopVideo();
             VolverAlMenu();
         }
-        
-        // MÉTODO OCULTO: Si se presiona la tecla 5, saltar directamente a la molécula completa
+
         if (Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5))
         {
-            // Acceso directo secreto para saltar a la molécula completada
             SaltarAMoleculaCompleta();
         }
     }
-    
-    /// <summary>
-    /// Método secreto que permite saltar directamente a la molécula completa (última etapa)
-    /// Se activa con la tecla 5
-    /// </summary>
+
     private void SaltarAMoleculaCompleta()
     {
-        // Verificar que tengamos configurados los prefabs
         if (metanoStages == null || metanoStages.Length == 0)
         {
             Debug.LogError("No se puede saltar a molécula completa: Array de metanoStages no configurado");
             return;
         }
-        
+
         int ultimaEtapa = metanoStages.Length - 1;
         if (metanoStages[ultimaEtapa] == null)
         {
             Debug.LogError("No se puede saltar a molécula completa: Prefab de última etapa no asignado");
             return;
         }
-        
+
         Debug.Log("¡MODO DESARROLLADOR ACTIVADO! Saltando directamente a la molécula completa (etapa " + ultimaEtapa + ")");
-        
-        // Guardar posición actual si existe un metano
+
         Vector3 posicion = Vector3.zero;
         Quaternion rotacion = Quaternion.identity;
-        
+
         if (currentMetano != null)
         {
             posicion = currentMetano.transform.position;
             rotacion = currentMetano.transform.rotation;
-            
-            // Destruir el metano actual
             Destroy(currentMetano);
             currentMetano = null;
         }
         else
         {
-            // Si no hay metano, usar una posición predeterminada
             posicion = new Vector3(0, 1, 0);
         }
-        
-        // Instanciar directamente la molécula completa
+
         GameObject metanoCompleto = Instantiate(
             metanoStages[ultimaEtapa],
             posicion,
             rotacion,
             null
         );
-        
         metanoCompleto.name = "Metano_Completo_Saltado";
         currentMetano = metanoCompleto;
         currentStage = ultimaEtapa;
-        
-        // Asegurarse que tiene el tag correcto
+
         if (currentMetano.tag != "Metano")
-        {
             currentMetano.tag = "Metano";
-        }
-        
-        // El metano ya está completo, llamar a NivelCompletado
+
         NivelCompletado();
     }
 
-    /// <summary>
-    /// Para visualización en el editor, muestra la posición del metano actual
-    /// </summary>
     private void OnDrawGizmos()
     {
         if (showDebugGizmos && currentMetano != null)
         {
-            // Dibuja un gizmo en la posición del metano actual
             Gizmos.color = Color.green;
             Gizmos.DrawSphere(currentMetano.transform.position, 0.2f);
         }
     }
 
-    /// <summary>
-    /// Añade el componente MetanoCollisionHandler al metano actual
-    /// </summary>
     private void AgregarCollisionHandler()
     {
         if (currentMetano != null)
         {
-            // Verificar si ya tiene el componente
             MetanoCollisionHandler handler = currentMetano.GetComponent<MetanoCollisionHandler>();
             if (handler == null)
             {
-                // Añadir el componente de manejo de colisiones
                 handler = currentMetano.AddComponent<MetanoCollisionHandler>();
-                // Asignar este MetanoAssembler como referencia
                 handler.assembler = this;
                 Debug.Log("MetanoAssembler: Añadido MetanoCollisionHandler al metano actual: " + currentMetano.name);
             }
         }
     }
 
-    /// <summary>
-    /// Actualiza el metano a la siguiente etapa cuando colisiona con un hidrógeno.
-    /// </summary>
-    /// <param name="hidrogenoObj">El objeto hidrógeno que colisionó con el metano</param>
     public void EvolucionarMetano(GameObject hidrogenoObj)
+{
+    if (currentMetano == null)
     {
-        if (currentMetano == null)
-        {
-            Debug.LogError("MetanoAssembler: No hay metano actual para evolucionar");
-            return;
-        }
-        
-        // Desactivar o destruir el hidrógeno
-        Debug.Log("MetanoAssembler: Hidrógeno consumido: " + hidrogenoObj.name);
-        Destroy(hidrogenoObj);
-
-        // Calcular la próxima etapa
-        int nextStage = currentStage + 1;
-        
-        // Verificar si hemos alcanzado el límite máximo de etapas
-        if (nextStage >= metanoStages.Length)
-        {
-            Debug.Log("MetanoAssembler: El metano ya está en su etapa final (Metano Completo)");
-            return;
-        }
-
-        // Verificar que el siguiente prefab existe
-        if (metanoStages[nextStage] == null)
-        {
-            Debug.LogError("MetanoAssembler: El prefab para la etapa " + nextStage + " no está asignado en el array");
-            return;
-        }
-
-        // Guardar la posición y rotación actuales
-        Vector3 currentPosition = currentMetano.transform.position;
-        Quaternion currentRotation = currentMetano.transform.rotation;
-        
-        Debug.Log("MetanoAssembler: Posición del metano actual antes de destruirlo: " + currentPosition);
-        
-        // Desactivar o destruir el metano actual
-        GameObject oldMetano = currentMetano;
-        currentMetano = null; // Limpiar referencia antes de destruir
-        Debug.Log("MetanoAssembler: Destruyendo metano en etapa " + currentStage + ": " + oldMetano.name);
-        Destroy(oldMetano);
-        
-        // Instanciar la nueva etapa del metano - usar Instantiate con parent = null para asegurar que no herede transformaciones
-        GameObject newMetano = Instantiate(
-            metanoStages[nextStage], 
-            currentPosition, 
-            currentRotation,
-            null // sin padre
-        );
-        
-        // Asegurarse de que el nuevo metano esté activo
-        newMetano.SetActive(true);
-        
-        // Dar un nombre más descriptivo para facilitar depuración
-        newMetano.name = "Metano_Etapa_" + nextStage;
-        
-        Debug.Log("MetanoAssembler: Instanciado nuevo metano: " + newMetano.name + " en posición: " + newMetano.transform.position);
-        
-        // Actualizar la referencia al metano actual
-        currentMetano = newMetano;
-        
-        // Actualizar la etapa actual
-        currentStage = nextStage;
-        
-        // Asegurarse que tiene el tag correcto
-        if (currentMetano.tag != "Metano")
-        {
-            currentMetano.tag = "Metano";
-        }
-
-        // Verificar o añadir componentes necesarios al nuevo metano
-        Collider newCollider = currentMetano.GetComponent<Collider>();
-        if (newCollider == null)
-        {
-            Debug.LogWarning("MetanoAssembler: El nuevo metano no tiene un Collider. Añadiendo uno...");
-            SphereCollider sc = currentMetano.AddComponent<SphereCollider>();
-            sc.isTrigger = true;
-            sc.radius = 1.0f;
-        }
-        else if (!newCollider.isTrigger)
-        {
-            newCollider.isTrigger = true;
-        }
-
-        Rigidbody newRb = currentMetano.GetComponent<Rigidbody>();
-        if (newRb == null)
-        {
-            Debug.LogWarning("MetanoAssembler: El nuevo metano no tiene un Rigidbody. Añadiendo uno...");
-            newRb = currentMetano.AddComponent<Rigidbody>();
-            newRb.isKinematic = true;
-            newRb.useGravity = false;
-        }
-        
-        // Añadir el componente de manejo de colisiones al nuevo metano
-        AgregarCollisionHandler();
-        
-        Debug.Log("MetanoAssembler: Metano evolucionado exitosamente a etapa " + currentStage + 
-                  " (" + metanoStages[currentStage].name + ")");
-        
-        // Verificar si hemos alcanzado la etapa final (metanocompleto)
-        if (currentStage == metanoStages.Length - 1)
-        {
-            NivelCompletado();
-        }
-        
-        // Para visualización en fase de depuración
-        if (showDebugGizmos)
-        {
-            Debug.DrawLine(currentMetano.transform.position, 
-                          currentMetano.transform.position + Vector3.up * 2.0f, 
-                          Color.magenta, 10.0f);
-        }
+        Debug.LogError("MetanoAssembler: No hay metano actual para evolucionar");
+        return;
     }
 
-    /// <summary>
-    /// Se llama cuando el metano ha alcanzado su etapa final (metanocompleto)
-    /// </summary>
+    Debug.Log("MetanoAssembler: Hidrógeno consumido: " + hidrogenoObj.name);
+    
+    // Guarda la posición y rotación EXACTA antes de destruir el objeto
+    Vector3 exactPosition = currentMetano.transform.position;
+    Quaternion exactRotation = currentMetano.transform.rotation;
+    Transform parentTransform = currentMetano.transform.parent;  // También conservamos el padre
+    
+    // Guarda la escala por si acaso
+    Vector3 currentScale = currentMetano.transform.localScale;
+    
+    // NUEVO: Guarda información sobre si está siendo agarrado actualmente
+    bool isCurrentlyHeld = (parentTransform != null && parentTransform.name.Contains("HoldPosition"));
+    Transform holdParent = isCurrentlyHeld ? parentTransform : null;
+    
+    // NUEVO: Guarda todas las referencias y componentes importantes para el sistema de agarre
+    Dictionary<string, Component> importantComponents = new Dictionary<string, Component>();
+    Dictionary<string, object> importantValues = new Dictionary<string, object>();
+    
+    // Busca componentes que puedan estar relacionados con el sistema de agarre
+    // (esto puede necesitar ajustes según tu sistema específico)
+    Component[] allComponents = currentMetano.GetComponents<Component>();
+    foreach (Component comp in allComponents)
+    {
+        if (comp == null) continue;
+        
+        string typeName = comp.GetType().Name;
+        
+        // Guarda componentes que podrían estar relacionados con el agarre
+        // Ajusta estos nombres según los componentes que estés usando
+        if (typeName.Contains("Grab") || typeName.Contains("Pickable") || 
+            typeName.Contains("Holdable") || typeName.Contains("Interact") ||
+            typeName.Contains("Item") || typeName.Contains("Object"))
+        {
+            importantComponents[typeName] = comp;
+            Debug.Log("Guardando componente importante: " + typeName);
+            
+            // Intenta guardar campos públicos que podrían ser importantes
+            System.Reflection.FieldInfo[] fields = comp.GetType().GetFields();
+            foreach (var field in fields)
+            {
+                string key = typeName + "." + field.Name;
+                object value = field.GetValue(comp);
+                importantValues[key] = value;
+                Debug.Log("Guardando valor: " + key);
+            }
+        }
+    }
+    
+    Destroy(hidrogenoObj);  // Destruye el hidrógeno
+
+    int nextStage = currentStage + 1;
+    if (nextStage >= metanoStages.Length)
+    {
+        Debug.Log("MetanoAssembler: El metano ya está en su etapa final (Metano Completo)");
+        return;
+    }
+    if (metanoStages[nextStage] == null)
+    {
+        Debug.LogError("MetanoAssembler: El prefab para la etapa " + nextStage + " no está asignado en el array");
+        return;
+    }
+
+    GameObject oldMetano = currentMetano;
+    currentMetano = null;
+    
+    // MODIFICADO: Instanciamos primero antes de destruir el viejo para poder copiar componentes
+    GameObject newMetano = Instantiate(
+        metanoStages[nextStage],
+        exactPosition,  // Usa la posición guardada
+        exactRotation,  // Usa la rotación guardada
+        null  // Temporalmente sin padre para correcta inicialización
+    );
+    
+    // Copiar componentes importantes del objeto original al nuevo
+    foreach (var kvp in importantComponents)
+    {
+        string typeName = kvp.Key;
+        Component originalComp = kvp.Value;
+        
+        // Busca si ya existe un componente del mismo tipo
+        Component existingComp = null;
+        Component[] newComponents = newMetano.GetComponents<Component>();
+        foreach (Component comp in newComponents)
+        {
+            if (comp != null && comp.GetType().Name == typeName)
+            {
+                existingComp = comp;
+                break;
+            }
+        }
+        
+        // Si no existe, intenta añadirlo
+        if (existingComp == null)
+        {
+            try
+            {
+                System.Type compType = originalComp.GetType();
+                existingComp = newMetano.AddComponent(compType);
+                Debug.Log("Añadido componente: " + typeName);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("No se pudo añadir componente " + typeName + ": " + e.Message);
+            }
+        }
+        
+        // Restaura valores de campos
+        if (existingComp != null)
+        {
+            System.Reflection.FieldInfo[] fields = existingComp.GetType().GetFields();
+            foreach (var field in fields)
+            {
+                string key = typeName + "." + field.Name;
+                if (importantValues.ContainsKey(key))
+                {
+                    try
+                    {
+                        field.SetValue(existingComp, importantValues[key]);
+                        Debug.Log("Restaurado valor: " + key);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning("No se pudo restaurar valor " + key + ": " + e.Message);
+                    }
+                }
+            }
+        }
+    }
+    
+    // Ahora podemos destruir el viejo
+    Destroy(oldMetano);
+    
+    // Aplica la misma escala
+    newMetano.transform.localScale = currentScale;
+    
+    // NUEVO: Si estaba siendo sostenido, mantén la relación padre-hijo
+    if (isCurrentlyHeld && holdParent != null)
+    {
+        newMetano.transform.SetParent(holdParent, true);
+        Debug.Log("La molécula estaba siendo sostenida. Restaurando parent: " + holdParent.name);
+    }
+    else if (parentTransform != null)
+    {
+        newMetano.transform.SetParent(parentTransform, true);
+    }
+    
+    // Registra información de debug detallada
+    Debug.Log("Posición exacta: " + exactPosition + " - Nueva posición: " + newMetano.transform.position);
+    
+    // Fuerza la posición nuevamente después de la instanciación por si acaso
+    newMetano.transform.position = exactPosition;
+    newMetano.transform.rotation = exactRotation;
+    
+    newMetano.SetActive(true);
+    newMetano.name = "Metano_Etapa_" + nextStage;
+    currentMetano = newMetano;
+    currentStage = nextStage;
+
+    if (currentMetano.tag != "Metano")
+        currentMetano.tag = "Metano";
+
+    Collider newCollider = currentMetano.GetComponent<Collider>();
+    if (newCollider == null)
+    {
+        SphereCollider sc = currentMetano.AddComponent<SphereCollider>();
+        sc.isTrigger = true;
+        sc.radius = 1.0f;
+    }
+    else if (!newCollider.isTrigger)
+    {
+        newCollider.isTrigger = true;
+    }
+
+    Rigidbody newRb = currentMetano.GetComponent<Rigidbody>();
+    if (newRb == null)
+    {
+        newRb = currentMetano.AddComponent<Rigidbody>();
+    }
+    
+    // NUEVO: Configura el Rigidbody según si está siendo sostenido o no
+    if (isCurrentlyHeld)
+    {
+        newRb.isKinematic = true;
+        newRb.useGravity = false;
+    }
+    else
+    {
+        // Si no está siendo sostenido, usa la configuración estándar
+        newRb.isKinematic = true;
+        newRb.useGravity = false;
+    }
+
+    AgregarCollisionHandler();
+    Debug.Log("MetanoAssembler: Metano evolucionado exitosamente a etapa " + currentStage +
+              " (" + metanoStages[currentStage].name + ") en posición: " + newMetano.transform.position +
+              ", Parent: " + (newMetano.transform.parent ? newMetano.transform.parent.name : "ninguno"));
+
+    if (currentStage == metanoStages.Length - 1)
+        NivelCompletado();
+
+    if (showDebugGizmos)
+    {
+        Debug.DrawLine(currentMetano.transform.position,
+                       currentMetano.transform.position + Vector3.up * 2.0f,
+                       Color.magenta, 10.0f);
+    }
+}
+
     private void NivelCompletado()
     {
         Debug.Log("¡NIVEL COMPLETADO! El metano ha alcanzado su etapa final (metanocompleto)");
-        
-        // Reproducir el video de finalización
         PlayCompletionVideo();
     }
-    
+
     /// <summary>
     /// Reproduce el video de finalización del nivel
     /// </summary>
     private void PlayCompletionVideo()
     {
-        // Si el video no está configurado correctamente, volver directamente al menú
         if (videoPlayer == null || string.IsNullOrEmpty(videoPlayer.url))
         {
             Debug.LogWarning("Video no configurado correctamente. Volviendo al menú principal.");
             StartCoroutine(VolverAlMenuDespuesDeEspera());
             return;
         }
-        
-        Debug.Log("Reproduciendo video de finalización: " + videoPlayer.url);
-        
-        // Activar el canvas del video si existe
+
         if (videoPlayerCanvas != null)
-        {
             videoPlayerCanvas.SetActive(true);
-        }
-        
-        // Si estamos usando una cámara para reproducir, activarla
+
         if (videoPlayer.renderMode == VideoRenderMode.CameraFarPlane && videoPlayer.targetCamera != null)
-        {
             videoPlayer.targetCamera.gameObject.SetActive(true);
-        }
-        
-        // Reproducir el video
+
+        // Reactivar audio antes de reproducir
+        videoPlayer.SetDirectAudioMute(0, false);
+
         videoPlayer.Play();
         isPlayingCompletionVideo = true;
-        
-        // Mostrar mensaje para omitir
+
         Debug.Log("Presiona ENTER para omitir el video y volver al menú principal");
-        
-        // Crear un GameObject con UI para mostrar el mensaje "Presiona ENTER para omitir"
         CreateSkipVideoUI();
     }
-    
-    /// <summary>
-    /// Crea una UI para mostrar el mensaje "Presiona ENTER para omitir"
-    /// </summary>
+
     private void CreateSkipVideoUI()
     {
         if (videoPlayerCanvas != null)
         {
-            // Verificar si ya existe el texto
             Transform skipTextTrans = videoPlayerCanvas.transform.Find("SkipText");
             if (skipTextTrans == null)
             {
-                // Crear un GameObject para el texto
                 GameObject skipTextObj = new GameObject("SkipText");
                 skipTextObj.transform.SetParent(videoPlayerCanvas.transform, false);
-                
-                // Añadir componente Text
                 UnityEngine.UI.Text skipText = skipTextObj.AddComponent<UnityEngine.UI.Text>();
                 skipText.text = "Presiona ENTER para omitir";
                 skipText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 skipText.fontSize = 24;
                 skipText.color = Color.white;
                 skipText.alignment = TextAnchor.LowerRight;
-                
-                // Configurar RectTransform
+
                 RectTransform rectTransform = skipText.GetComponent<RectTransform>();
                 rectTransform.anchorMin = new Vector2(0, 0);
                 rectTransform.anchorMax = new Vector2(1, 0);
@@ -538,57 +553,32 @@ public class MetanoAssembler : MonoBehaviour
             }
         }
     }
-    
-    /// <summary>
-    /// Detiene la reproducción del video
-    /// </summary>
+
     private void StopVideo()
     {
         if (videoPlayer != null)
-        {
             videoPlayer.Stop();
-        }
-        
+
         isPlayingCompletionVideo = false;
-        
-        // Desactivar el canvas del video si existe
+
         if (videoPlayerCanvas != null)
-        {
             videoPlayerCanvas.SetActive(false);
-        }
-        
-        // Si estamos usando una cámara para reproducir, desactivarla
+
         if (videoPlayer != null && videoPlayer.renderMode == VideoRenderMode.CameraFarPlane && videoPlayer.targetCamera != null)
-        {
             videoPlayer.targetCamera.gameObject.SetActive(false);
-        }
     }
-    
-    /// <summary>
-    /// Vuelve al menú principal inmediatamente
-    /// </summary>
+
     private void VolverAlMenu()
     {
-        // Detener cualquier corrutina en ejecución
         StopAllCoroutines();
-        
-        // Cargar la escena del menú principal
         Debug.Log("Cargando escena: " + menuInicialSceneName);
         SceneManager.LoadScene(menuInicialSceneName);
-        
-        // Iniciar corrutina para activar el grid de niveles después de cargar la escena
         StartCoroutine(ActivarGridNivelesDespuesDeCargarEscena());
     }
-    
-    /// <summary>
-    /// Corrutina para activar el grid de niveles después de cargar la escena
-    /// </summary>
+
     private IEnumerator ActivarGridNivelesDespuesDeCargarEscena()
     {
-        // Esperar a que la escena esté completamente cargada
         yield return null;
-        
-        // Intentar encontrar y activar el grid_niveles
         GameObject canvas = GameObject.Find("Canvas");
         if (canvas != null)
         {
@@ -597,17 +587,11 @@ public class MetanoAssembler : MonoBehaviour
             {
                 Debug.Log("Activando grid_niveles en el menú");
                 gridNiveles.gameObject.SetActive(true);
-                
-                // Asegurarse de que el EventSystem esté activo para recibir inputs
                 UnityEngine.EventSystems.EventSystem eventSystem = FindObjectOfType<UnityEngine.EventSystems.EventSystem>();
                 if (eventSystem != null)
-                {
                     eventSystem.gameObject.SetActive(true);
-                }
                 else
-                {
                     Debug.LogWarning("No se encontró un EventSystem en la escena. La interacción UI puede no funcionar correctamente.");
-                }
             }
             else
             {
@@ -619,24 +603,14 @@ public class MetanoAssembler : MonoBehaviour
             Debug.LogWarning("No se encontró el Canvas en la escena " + menuInicialSceneName);
         }
     }
-    
-    /// <summary>
-    /// Coroutine que espera un tiempo y luego vuelve al menú de niveles
-    /// </summary>
+
     private IEnumerator VolverAlMenuDespuesDeEspera()
     {
         Debug.Log("Volviendo al menú de niveles en " + tiempoEsperaFinNivel + " segundos...");
-        
-        // Esperar el tiempo configurado
         yield return new WaitForSeconds(tiempoEsperaFinNivel);
-        
-        // Volver al menú
         VolverAlMenu();
     }
 
-    /// <summary>
-    /// Método de depuración para mostrar información sobre el estado actual del metano.
-    /// </summary>
     public void MostrarEstadoActual()
     {
         if (currentMetano != null)
@@ -662,11 +636,7 @@ public class MetanoCollisionHandler : MonoBehaviour
 {
     [HideInInspector]
     public MetanoAssembler assembler;  // Referencia al MetanoAssembler principal
-    
-    /// <summary>
-    /// Se llama cuando otro collider entra en el trigger del metano.
-    /// </summary>
-    /// <param name="other">El collider que entró en el trigger</param>
+
     private void OnTriggerEnter(Collider other)
     {
         if (assembler == null)
@@ -674,21 +644,16 @@ public class MetanoCollisionHandler : MonoBehaviour
             Debug.LogError("MetanoCollisionHandler: No hay referencia al MetanoAssembler en " + gameObject.name);
             return;
         }
-        
-        // Verificar si el objeto que entró es un hidrógeno
+
         if (other.CompareTag("Hidrogeno"))
         {
             Debug.Log("MetanoCollisionHandler: " + gameObject.name + " detectó colisión con hidrógeno: " + other.gameObject.name);
             assembler.EvolucionarMetano(other.gameObject);
         }
     }
-    
-    /// <summary>
-    /// Muestra información visual adicional para depuración
-    /// </summary>
+
     private void OnDrawGizmos()
     {
-        // Dibujar una línea para mostrar que este objeto tiene el handler
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, 0.3f);
     }

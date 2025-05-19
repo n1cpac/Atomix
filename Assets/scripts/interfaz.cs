@@ -31,7 +31,7 @@ public class UIManager : MonoBehaviour
     public Button btnSeleccionarNivel5;
     
     [Header("Configuración")]
-    public float tiempoBienvenida = 4f;
+    [Tooltip("Nombres de escena o índices (en string) de cada nivel")]
     public string[] escenasPolimeros = new string[5];
 
     void Start()
@@ -102,9 +102,9 @@ public class UIManager : MonoBehaviour
     public void BotonSalir()
     {
         Application.Quit();
-        #if UNITY_EDITOR
+#if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
-        #endif
+#endif
     }
 
     public void SeleccionarDificultad(int nivel)
@@ -120,50 +120,89 @@ public class UIManager : MonoBehaviour
 
     public void SeleccionarPolimero(int indice)
     {
-        if (indice >= 0 && indice < escenasPolimeros.Length)
+        if (indice < 0 || indice >= escenasPolimeros.Length)
         {
-            string nombreEscena = escenasPolimeros[indice];
-            if (!string.IsNullOrEmpty(nombreEscena))
-            {
-                StartCoroutine(ReproducirVideoYEntrar(nombreEscena));
-            }
+            Debug.LogError($"Índice de nivel inválido: {indice}");
+            return;
         }
+
+        string raw = escenasPolimeros[indice];
+        if (string.IsNullOrEmpty(raw))
+        {
+            Debug.LogError($"Nombre o índice de escena vacío en escenasPolimeros[{indice}]");
+            return;
+        }
+
+        StartCoroutine(ReproducirVideoYEntrar(raw));
     }
 
-    private IEnumerator ReproducirVideoYEntrar(string nombreEscena)
+    private IEnumerator ReproducirVideoYEntrar(string rawScene)
     {
-        // Buscar el VideoFadePlayer en escena
+        // Primero, reproducir el vídeo de transición si existe
         VideoFadePlayer videoPlayer = FindObjectOfType<VideoFadePlayer>();
         if (videoPlayer != null)
         {
             yield return StartCoroutine(videoPlayer.PlayVideoAndWait());
         }
 
-        SceneManager.LoadScene(nombreEscena);
+        // Ahora intentar cargar como nombre de escena
+        bool loaded = false;
+        if (Application.CanStreamedLevelBeLoaded(rawScene))
+        {
+            SceneManager.LoadScene(rawScene);
+            loaded = true;
+        }
+        else
+        {
+            // Si no existe como nombre, probamos como índice
+            int idx;
+            if (int.TryParse(rawScene, out idx))
+            {
+                if (idx >= 0 && idx < SceneManager.sceneCountInBuildSettings)
+                {
+                    SceneManager.LoadScene(idx);
+                    loaded = true;
+                }
+                else
+                {
+                    Debug.LogError($"Índice de escena fuera de rango: {idx}. Scenes In Build: 0..{SceneManager.sceneCountInBuildSettings - 1}");
+                }
+            }
+            else
+            {
+                Debug.LogError($"No se encontró escena con nombre '{rawScene}' y no es un índice válido.");
+            }
+        }
+
+        if (!loaded)
+        {
+            Debug.LogError($"No se pudo cargar la escena '{rawScene}'. Revisa que esté incluida en File → Build Settings → Scenes In Build.");
+        }
     }
 
     public void VolverAPanelAnterior()
     {
-        if(seleccion_polimeros.activeSelf)
+        if (seleccion_polimeros.activeSelf)
         {
             seleccion_polimeros.SetActive(false);
             seleccion_dificultad.SetActive(true);
         }
-        else if(seleccion_dificultad.activeSelf)
+        else if (seleccion_dificultad.activeSelf)
         {
             seleccion_dificultad.SetActive(false);
             Menu_principal.SetActive(true);
         }
-  
     }
 
     public void ReiniciarMenu()
-{
-    Pantalla_carga_inicial.SetActive(true);
-    Menu_principal.SetActive(false);
-    seleccion_dificultad.SetActive(false);
-    seleccion_polimeros.SetActive(false);
-    Invoke("MostrarMenuPrincipal", tiempoBienvenida);
-}
+    {
+        Pantalla_carga_inicial.SetActive(true);
+        Menu_principal.SetActive(false);
+        seleccion_dificultad.SetActive(false);
+        seleccion_polimeros.SetActive(false);
+        Invoke("MostrarMenuPrincipal", tiempoBienvenida);
+    }
 
+    [Header("Tiempo de transición")]
+    public float tiempoBienvenida = 4f;
 }
