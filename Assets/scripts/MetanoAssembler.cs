@@ -40,6 +40,27 @@ public class MetanoAssembler : MonoBehaviour
     [Tooltip("RawImage donde se mostrará el video")]
     public UnityEngine.UI.RawImage videoRawImage;
 
+    [Header("Sistema de Sonido")]
+    [Tooltip("Sonido que se reproduce cuando se conectan moléculas")]
+    public AudioClip sonidoConexion;
+    
+    [Tooltip("Volumen para el sonido de conexión (0.0 - 1.0)")]
+    [Range(0f, 1f)]
+    public float volumenConexion = 0.7f;
+    
+    [Tooltip("Sonido que se reproduce cuando el jugador agarra un hidrógeno")]
+    public AudioClip sonidoAgarrarHidrogeno;
+    
+    [Tooltip("Sonido que se reproduce cuando el jugador suelta un hidrógeno")]
+    public AudioClip sonidoSoltarHidrogeno;
+    
+    [Tooltip("Volumen para los sonidos de agarrar/soltar hidrógeno (0.0 - 1.0)")]
+    [Range(0f, 1f)]
+    public float volumenInteraccionHidrogeno = 0.5f;
+    
+    [Tooltip("Componente AudioSource para reproducir los efectos de sonido")]
+    private AudioSource audioSource;
+
     // VideoPlayer que manejará la reproducción del video
     private VideoPlayer videoPlayer;
 
@@ -51,6 +72,9 @@ public class MetanoAssembler : MonoBehaviour
     /// </summary>
     private void Start()
     {
+        // Configurar el sistema de audio
+        ConfigurarAudioSource();
+        
         // Validar que el array metanoStages tenga elementos
         if (metanoStages == null || metanoStages.Length == 0)
         {
@@ -121,6 +145,72 @@ public class MetanoAssembler : MonoBehaviour
                            currentMetano.transform.position + Vector3.up * 2.0f,
                            Color.green, 10.0f);
         }
+    }
+
+    /// <summary>
+    /// Configura el AudioSource para reproducir efectos de sonido
+    /// </summary>
+    private void ConfigurarAudioSource()
+    {
+        audioSource = GetComponent<AudioSource>();
+        
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            Debug.Log("MetanoAssembler: Se añadió un AudioSource automáticamente para reproducir efectos de sonido.");
+        }
+        
+        // Configuración básica del AudioSource
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 0.5f;  // 0 = 2D, 1 = 3D completo, 0.5 = mezcla
+        audioSource.priority = 128;       // Prioridad media
+        audioSource.dopplerLevel = 0.0f;  // Deshabilitar efecto Doppler para estos sonidos
+        
+        // Verificar que los clips de audio estén asignados
+        if (sonidoConexion == null)
+            Debug.LogWarning("MetanoAssembler: No se ha asignado un clip para el sonido de conexión. Este efecto estará silenciado.");
+            
+        if (sonidoAgarrarHidrogeno == null)
+            Debug.LogWarning("MetanoAssembler: No se ha asignado un clip para agarrar hidrógeno. Este efecto estará silenciado.");
+            
+        if (sonidoSoltarHidrogeno == null)
+            Debug.LogWarning("MetanoAssembler: No se ha asignado un clip para soltar hidrógeno. Este efecto estará silenciado.");
+    }
+    
+    /// <summary>
+    /// Reproduce un sonido de interacción con hidrógeno (agarrar o soltar)
+    /// </summary>
+    /// <param name="agarrando">True si está agarrando, False si está soltando</param>
+    public void ReproducirSonidoInteraccionHidrogeno(bool agarrando)
+    {
+        if (audioSource == null)
+            return;
+            
+        AudioClip clipAReproducir = agarrando ? sonidoAgarrarHidrogeno : sonidoSoltarHidrogeno;
+        
+        if (clipAReproducir != null)
+        {
+            audioSource.clip = clipAReproducir;
+            audioSource.volume = volumenInteraccionHidrogeno;
+            audioSource.Play();
+            
+            Debug.Log("Reproduciendo sonido de " + (agarrando ? "agarrar" : "soltar") + " hidrógeno");
+        }
+    }
+    
+    /// <summary>
+    /// Reproduce el sonido de conexión entre moléculas
+    /// </summary>
+    public void ReproducirSonidoConexion()
+    {
+        if (audioSource == null || sonidoConexion == null)
+            return;
+            
+        audioSource.clip = sonidoConexion;
+        audioSource.volume = volumenConexion;
+        audioSource.Play();
+        
+        Debug.Log("Reproduciendo sonido de conexión entre moléculas");
     }
 
     /// <summary>
@@ -279,220 +369,223 @@ public class MetanoAssembler : MonoBehaviour
     }
 
     public void EvolucionarMetano(GameObject hidrogenoObj)
-{
-    if (currentMetano == null)
     {
-        Debug.LogError("MetanoAssembler: No hay metano actual para evolucionar");
-        return;
-    }
-
-    Debug.Log("MetanoAssembler: Hidrógeno consumido: " + hidrogenoObj.name);
-    
-    // Guarda la posición y rotación EXACTA antes de destruir el objeto
-    Vector3 exactPosition = currentMetano.transform.position;
-    Quaternion exactRotation = currentMetano.transform.rotation;
-    Transform parentTransform = currentMetano.transform.parent;  // También conservamos el padre
-    
-    // Guarda la escala por si acaso
-    Vector3 currentScale = currentMetano.transform.localScale;
-    
-    // NUEVO: Guarda información sobre si está siendo agarrado actualmente
-    bool isCurrentlyHeld = (parentTransform != null && parentTransform.name.Contains("HoldPosition"));
-    Transform holdParent = isCurrentlyHeld ? parentTransform : null;
-    
-    // NUEVO: Guarda todas las referencias y componentes importantes para el sistema de agarre
-    Dictionary<string, Component> importantComponents = new Dictionary<string, Component>();
-    Dictionary<string, object> importantValues = new Dictionary<string, object>();
-    
-    // Busca componentes que puedan estar relacionados con el sistema de agarre
-    // (esto puede necesitar ajustes según tu sistema específico)
-    Component[] allComponents = currentMetano.GetComponents<Component>();
-    foreach (Component comp in allComponents)
-    {
-        if (comp == null) continue;
-        
-        string typeName = comp.GetType().Name;
-        
-        // Guarda componentes que podrían estar relacionados con el agarre
-        // Ajusta estos nombres según los componentes que estés usando
-        if (typeName.Contains("Grab") || typeName.Contains("Pickable") || 
-            typeName.Contains("Holdable") || typeName.Contains("Interact") ||
-            typeName.Contains("Item") || typeName.Contains("Object"))
+        if (currentMetano == null)
         {
-            importantComponents[typeName] = comp;
-            Debug.Log("Guardando componente importante: " + typeName);
+            Debug.LogError("MetanoAssembler: No hay metano actual para evolucionar");
+            return;
+        }
+
+        Debug.Log("MetanoAssembler: Hidrógeno consumido: " + hidrogenoObj.name);
+        
+        // Guarda la posición y rotación EXACTA antes de destruir el objeto
+        Vector3 exactPosition = currentMetano.transform.position;
+        Quaternion exactRotation = currentMetano.transform.rotation;
+        Transform parentTransform = currentMetano.transform.parent;  // También conservamos el padre
+        
+        // Guarda la escala por si acaso
+        Vector3 currentScale = currentMetano.transform.localScale;
+        
+        // NUEVO: Guarda información sobre si está siendo agarrado actualmente
+        bool isCurrentlyHeld = (parentTransform != null && parentTransform.name.Contains("HoldPosition"));
+        Transform holdParent = isCurrentlyHeld ? parentTransform : null;
+        
+        // NUEVO: Guarda todas las referencias y componentes importantes para el sistema de agarre
+        Dictionary<string, Component> importantComponents = new Dictionary<string, Component>();
+        Dictionary<string, object> importantValues = new Dictionary<string, object>();
+        
+        // Busca componentes que puedan estar relacionados con el sistema de agarre
+        // (esto puede necesitar ajustes según tu sistema específico)
+        Component[] allComponents = currentMetano.GetComponents<Component>();
+        foreach (Component comp in allComponents)
+        {
+            if (comp == null) continue;
             
-            // Intenta guardar campos públicos que podrían ser importantes
-            System.Reflection.FieldInfo[] fields = comp.GetType().GetFields();
-            foreach (var field in fields)
+            string typeName = comp.GetType().Name;
+            
+            // Guarda componentes que podrían estar relacionados con el agarre
+            // Ajusta estos nombres según los componentes que estés usando
+            if (typeName.Contains("Grab") || typeName.Contains("Pickable") || 
+                typeName.Contains("Holdable") || typeName.Contains("Interact") ||
+                typeName.Contains("Item") || typeName.Contains("Object"))
             {
-                string key = typeName + "." + field.Name;
-                object value = field.GetValue(comp);
-                importantValues[key] = value;
-                Debug.Log("Guardando valor: " + key);
-            }
-        }
-    }
-    
-    Destroy(hidrogenoObj);  // Destruye el hidrógeno
-
-    int nextStage = currentStage + 1;
-    if (nextStage >= metanoStages.Length)
-    {
-        Debug.Log("MetanoAssembler: El metano ya está en su etapa final (Metano Completo)");
-        return;
-    }
-    if (metanoStages[nextStage] == null)
-    {
-        Debug.LogError("MetanoAssembler: El prefab para la etapa " + nextStage + " no está asignado en el array");
-        return;
-    }
-
-    GameObject oldMetano = currentMetano;
-    currentMetano = null;
-    
-    // MODIFICADO: Instanciamos primero antes de destruir el viejo para poder copiar componentes
-    GameObject newMetano = Instantiate(
-        metanoStages[nextStage],
-        exactPosition,  // Usa la posición guardada
-        exactRotation,  // Usa la rotación guardada
-        null  // Temporalmente sin padre para correcta inicialización
-    );
-    
-    // Copiar componentes importantes del objeto original al nuevo
-    foreach (var kvp in importantComponents)
-    {
-        string typeName = kvp.Key;
-        Component originalComp = kvp.Value;
-        
-        // Busca si ya existe un componente del mismo tipo
-        Component existingComp = null;
-        Component[] newComponents = newMetano.GetComponents<Component>();
-        foreach (Component comp in newComponents)
-        {
-            if (comp != null && comp.GetType().Name == typeName)
-            {
-                existingComp = comp;
-                break;
-            }
-        }
-        
-        // Si no existe, intenta añadirlo
-        if (existingComp == null)
-        {
-            try
-            {
-                System.Type compType = originalComp.GetType();
-                existingComp = newMetano.AddComponent(compType);
-                Debug.Log("Añadido componente: " + typeName);
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning("No se pudo añadir componente " + typeName + ": " + e.Message);
-            }
-        }
-        
-        // Restaura valores de campos
-        if (existingComp != null)
-        {
-            System.Reflection.FieldInfo[] fields = existingComp.GetType().GetFields();
-            foreach (var field in fields)
-            {
-                string key = typeName + "." + field.Name;
-                if (importantValues.ContainsKey(key))
+                importantComponents[typeName] = comp;
+                Debug.Log("Guardando componente importante: " + typeName);
+                
+                // Intenta guardar campos públicos que podrían ser importantes
+                System.Reflection.FieldInfo[] fields = comp.GetType().GetFields();
+                foreach (var field in fields)
                 {
-                    try
+                    string key = typeName + "." + field.Name;
+                    object value = field.GetValue(comp);
+                    importantValues[key] = value;
+                    Debug.Log("Guardando valor: " + key);
+                }
+            }
+        }
+        
+        Destroy(hidrogenoObj);  // Destruye el hidrógeno
+
+        int nextStage = currentStage + 1;
+        if (nextStage >= metanoStages.Length)
+        {
+            Debug.Log("MetanoAssembler: El metano ya está en su etapa final (Metano Completo)");
+            return;
+        }
+        if (metanoStages[nextStage] == null)
+        {
+            Debug.LogError("MetanoAssembler: El prefab para la etapa " + nextStage + " no está asignado en el array");
+            return;
+        }
+
+        GameObject oldMetano = currentMetano;
+        currentMetano = null;
+        
+        // MODIFICADO: Instanciamos primero antes de destruir el viejo para poder copiar componentes
+        GameObject newMetano = Instantiate(
+            metanoStages[nextStage],
+            exactPosition,  // Usa la posición guardada
+            exactRotation,  // Usa la rotación guardada
+            null  // Temporalmente sin padre para correcta inicialización
+        );
+        
+        // Copiar componentes importantes del objeto original al nuevo
+        foreach (var kvp in importantComponents)
+        {
+            string typeName = kvp.Key;
+            Component originalComp = kvp.Value;
+            
+            // Busca si ya existe un componente del mismo tipo
+            Component existingComp = null;
+            Component[] newComponents = newMetano.GetComponents<Component>();
+            foreach (Component comp in newComponents)
+            {
+                if (comp != null && comp.GetType().Name == typeName)
+                {
+                    existingComp = comp;
+                    break;
+                }
+            }
+            
+            // Si no existe, intenta añadirlo
+            if (existingComp == null)
+            {
+                try
+                {
+                    System.Type compType = originalComp.GetType();
+                    existingComp = newMetano.AddComponent(compType);
+                    Debug.Log("Añadido componente: " + typeName);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning("No se pudo añadir componente " + typeName + ": " + e.Message);
+                }
+            }
+            
+            // Restaura valores de campos
+            if (existingComp != null)
+            {
+                System.Reflection.FieldInfo[] fields = existingComp.GetType().GetFields();
+                foreach (var field in fields)
+                {
+                    string key = typeName + "." + field.Name;
+                    if (importantValues.ContainsKey(key))
                     {
-                        field.SetValue(existingComp, importantValues[key]);
-                        Debug.Log("Restaurado valor: " + key);
-                    }
-                    catch (System.Exception e)
-                    {
-                        Debug.LogWarning("No se pudo restaurar valor " + key + ": " + e.Message);
+                        try
+                        {
+                            field.SetValue(existingComp, importantValues[key]);
+                            Debug.Log("Restaurado valor: " + key);
+                        }
+                        catch (System.Exception e)
+                        {
+                            Debug.LogWarning("No se pudo restaurar valor " + key + ": " + e.Message);
+                        }
                     }
                 }
             }
         }
-    }
-    
-    // Ahora podemos destruir el viejo
-    Destroy(oldMetano);
-    
-    // Aplica la misma escala
-    newMetano.transform.localScale = currentScale;
-    
-    // NUEVO: Si estaba siendo sostenido, mantén la relación padre-hijo
-    if (isCurrentlyHeld && holdParent != null)
-    {
-        newMetano.transform.SetParent(holdParent, true);
-        Debug.Log("La molécula estaba siendo sostenida. Restaurando parent: " + holdParent.name);
-    }
-    else if (parentTransform != null)
-    {
-        newMetano.transform.SetParent(parentTransform, true);
-    }
-    
-    // Registra información de debug detallada
-    Debug.Log("Posición exacta: " + exactPosition + " - Nueva posición: " + newMetano.transform.position);
-    
-    // Fuerza la posición nuevamente después de la instanciación por si acaso
-    newMetano.transform.position = exactPosition;
-    newMetano.transform.rotation = exactRotation;
-    
-    newMetano.SetActive(true);
-    newMetano.name = "Metano_Etapa_" + nextStage;
-    currentMetano = newMetano;
-    currentStage = nextStage;
+        
+        // Ahora podemos destruir el viejo
+        Destroy(oldMetano);
+        
+        // Aplica la misma escala
+        newMetano.transform.localScale = currentScale;
+        
+        // NUEVO: Si estaba siendo sostenido, mantén la relación padre-hijo
+        if (isCurrentlyHeld && holdParent != null)
+        {
+            newMetano.transform.SetParent(holdParent, true);
+            Debug.Log("La molécula estaba siendo sostenida. Restaurando parent: " + holdParent.name);
+        }
+        else if (parentTransform != null)
+        {
+            newMetano.transform.SetParent(parentTransform, true);
+        }
+        
+        // Registra información de debug detallada
+        Debug.Log("Posición exacta: " + exactPosition + " - Nueva posición: " + newMetano.transform.position);
+        
+        // Fuerza la posición nuevamente después de la instanciación por si acaso
+        newMetano.transform.position = exactPosition;
+        newMetano.transform.rotation = exactRotation;
+        
+        newMetano.SetActive(true);
+        newMetano.name = "Metano_Etapa_" + nextStage;
+        currentMetano = newMetano;
+        currentStage = nextStage;
 
-    if (currentMetano.tag != "Metano")
-        currentMetano.tag = "Metano";
+        if (currentMetano.tag != "Metano")
+            currentMetano.tag = "Metano";
 
-    Collider newCollider = currentMetano.GetComponent<Collider>();
-    if (newCollider == null)
-    {
-        SphereCollider sc = currentMetano.AddComponent<SphereCollider>();
-        sc.isTrigger = true;
-        sc.radius = 1.0f;
-    }
-    else if (!newCollider.isTrigger)
-    {
-        newCollider.isTrigger = true;
-    }
+        Collider newCollider = currentMetano.GetComponent<Collider>();
+        if (newCollider == null)
+        {
+            SphereCollider sc = currentMetano.AddComponent<SphereCollider>();
+            sc.isTrigger = true;
+            sc.radius = 1.0f;
+        }
+        else if (!newCollider.isTrigger)
+        {
+            newCollider.isTrigger = true;
+        }
 
-    Rigidbody newRb = currentMetano.GetComponent<Rigidbody>();
-    if (newRb == null)
-    {
-        newRb = currentMetano.AddComponent<Rigidbody>();
-    }
-    
-    // NUEVO: Configura el Rigidbody según si está siendo sostenido o no
-    if (isCurrentlyHeld)
-    {
-        newRb.isKinematic = true;
-        newRb.useGravity = false;
-    }
-    else
-    {
-        // Si no está siendo sostenido, usa la configuración estándar
-        newRb.isKinematic = true;
-        newRb.useGravity = false;
-    }
+        Rigidbody newRb = currentMetano.GetComponent<Rigidbody>();
+        if (newRb == null)
+        {
+            newRb = currentMetano.AddComponent<Rigidbody>();
+        }
+        
+        // NUEVO: Configura el Rigidbody según si está siendo sostenido o no
+        if (isCurrentlyHeld)
+        {
+            newRb.isKinematic = true;
+            newRb.useGravity = false;
+        }
+        else
+        {
+            // Si no está siendo sostenido, usa la configuración estándar
+            newRb.isKinematic = true;
+            newRb.useGravity = false;
+        }
 
-    AgregarCollisionHandler();
-    Debug.Log("MetanoAssembler: Metano evolucionado exitosamente a etapa " + currentStage +
-              " (" + metanoStages[currentStage].name + ") en posición: " + newMetano.transform.position +
-              ", Parent: " + (newMetano.transform.parent ? newMetano.transform.parent.name : "ninguno"));
+        AgregarCollisionHandler();
+        Debug.Log("MetanoAssembler: Metano evolucionado exitosamente a etapa " + currentStage +
+                  " (" + metanoStages[currentStage].name + ") en posición: " + newMetano.transform.position +
+                  ", Parent: " + (newMetano.transform.parent ? newMetano.transform.parent.name : "ninguno"));
+                  
+        // Reproducir sonido de conexión cuando se evoluciona el metano (se conectan moléculas)
+        ReproducirSonidoConexion();
 
-    if (currentStage == metanoStages.Length - 1)
-        NivelCompletado();
+        if (currentStage == metanoStages.Length - 1)
+            NivelCompletado();
 
-    if (showDebugGizmos)
-    {
-        Debug.DrawLine(currentMetano.transform.position,
-                       currentMetano.transform.position + Vector3.up * 2.0f,
-                       Color.magenta, 10.0f);
+        if (showDebugGizmos)
+        {
+            Debug.DrawLine(currentMetano.transform.position,
+                           currentMetano.transform.position + Vector3.up * 2.0f,
+                           Color.magenta, 10.0f);
+        }
     }
-}
 
     private void NivelCompletado()
     {

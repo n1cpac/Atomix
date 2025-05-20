@@ -214,6 +214,18 @@ MonoBehaviour:
           m_StringArgument: SampleScene2
           m_BoolArgument: 0
         m_CallState: 2
+      - m_Target: {fileID: 1452203383}
+        m_TargetAssemblyTypeName: VideoFadePlayer, Assembly-CSharp
+        m_MethodName: PlayAndLoadLevel
+        m_Mode: 5
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: SampleScene2
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &119998478
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -607,6 +619,18 @@ MonoBehaviour:
       - m_Target: {fileID: 11500000, guid: f76b274894a04ce4a8f3f559ab90948a, type: 3}
         m_TargetAssemblyTypeName: UnityEngine.Object, UnityEngine
         m_MethodName: set_name
+        m_Mode: 5
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: SampleScene1
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 1452203383}
+        m_TargetAssemblyTypeName: VideoFadePlayer, Assembly-CSharp
+        m_MethodName: PlayAndLoadLevel
         m_Mode: 5
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1978,6 +2002,18 @@ MonoBehaviour:
           m_StringArgument: SampleScene
           m_BoolArgument: 0
         m_CallState: 2
+      - m_Target: {fileID: 1452203383}
+        m_TargetAssemblyTypeName: VideoFadePlayer, Assembly-CSharp
+        m_MethodName: PlayAndLoadLevel
+        m_Mode: 5
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: SampleScene
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &896759286
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3067,6 +3103,18 @@ MonoBehaviour:
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 1452203383}
+        m_TargetAssemblyTypeName: VideoFadePlayer, Assembly-CSharp
+        m_MethodName: PlayAndLoadLevel
+        m_Mode: 5
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: tuto
           m_BoolArgument: 0
         m_CallState: 2
 --- !u!114 &1082353553
@@ -4269,7 +4317,15 @@ MonoBehaviour:
   videoPlayer: {fileID: 1452203381}
   rawImage: {fileID: 1005600881}
   canvasGroup: {fileID: 1005600880}
-  videoClip: {fileID: 0}
+  levelVideos:
+  - levelName: SampleScene
+    clip: {fileID: 32900000, guid: 3ef4ac98126c1f944b9e9df011dff244, type: 3}
+  - levelName: SampleScene1
+    clip: {fileID: 32900000, guid: 20e00a4b7cf54584ba3e8bc14070c1ad, type: 3}
+  - levelName: SampleScene2
+    clip: {fileID: 32900000, guid: 6644d5a8bfc3e6e45aaca8db6c1b6521, type: 3}
+  - levelName: tuto
+    clip: {fileID: 32900000, guid: b1b282766a718fb48bcc052cfc09f402, type: 3}
   fadeDuration: 1
 --- !u!1 &1484448716
 GameObject:

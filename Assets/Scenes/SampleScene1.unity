@@ -1024,9 +1024,14 @@ MonoBehaviour:
   tiempoEsperaFinNivel: 2
   menuInicialSceneName: MenuInicial
   gridNivelesName: grid_niveles
-  videoFileName: completion_video.mp4
+  videoFileName: propileno.mp4
   videoPlayerCanvas: {fileID: 2105166482}
   videoRawImage: {fileID: 0}
+  sonidoConexion: {fileID: 8300000, guid: 1d99db77269e9da488c5bf65da2d296b, type: 3}
+  volumenConexion: 0.7
+  sonidoAgarrarHidrogeno: {fileID: 0}
+  sonidoSoltarHidrogeno: {fileID: 0}
+  volumenInteraccionHidrogeno: 0.5
 --- !u!4 &367386978
 Transform:
   m_ObjectHideFlags: 0
@@ -3805,11 +3810,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8491149969276871057, guid: 54feb3b96077cef419981669a4ae7304, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -3426.56
+      value: -3426.453
       objectReference: {fileID: 0}
     - target: {fileID: 8491149969276871057, guid: 54feb3b96077cef419981669a4ae7304, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.56
+      value: -0.598
       objectReference: {fileID: 0}
     - target: {fileID: 8491149969276871057, guid: 54feb3b96077cef419981669a4ae7304, type: 3}
       propertyPath: m_LocalPosition.z

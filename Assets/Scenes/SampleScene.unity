@@ -1005,9 +1005,14 @@ MonoBehaviour:
   tiempoEsperaFinNivel: 2
   menuInicialSceneName: MenuInicial
   gridNivelesName: grid_niveles
-  videoFileName: completion_video.mp4
+  videoFileName: metano.mp4
   videoPlayerCanvas: {fileID: 2105166482}
   videoRawImage: {fileID: 0}
+  sonidoConexion: {fileID: 8300000, guid: 1d99db77269e9da488c5bf65da2d296b, type: 3}
+  volumenConexion: 0.7
+  sonidoAgarrarHidrogeno: {fileID: 8300000, guid: abc35184507b7cb49b2160c1e3e4b97e, type: 3}
+  sonidoSoltarHidrogeno: {fileID: 8300000, guid: abc35184507b7cb49b2160c1e3e4b97e, type: 3}
+  volumenInteraccionHidrogeno: 0.5
 --- !u!4 &367386978
 Transform:
   m_ObjectHideFlags: 0
@@ -4021,8 +4026,8 @@ SceneRoots:
   - {fileID: 845625776}
   - {fileID: 1135543506}
   - {fileID: 608426525}
-  - {fileID: 77077826}
   - {fileID: 185234365}
+  - {fileID: 77077826}
   - {fileID: 308344586521117293}
   - {fileID: 1699858856746370035}
   - {fileID: 6293755454056615051}
